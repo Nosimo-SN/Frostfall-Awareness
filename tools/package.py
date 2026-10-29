@@ -41,7 +41,7 @@ MODULE = """<?xml version="1.0" encoding="UTF-8"?>
             <plugin name="Cold Shiver (OAR)">
               <description>Shivering idle and walk animations while cold, through Open Animation Replacer (required for this option). The player shivers from Frostfall's Very Cold on; NPCs outdoors shiver while you are at least Chilly and the air is cold enough for what they wear (revealing clothing is read from Advanced Nudity Detection, if installed). Vampires, the undead and children never shiver. No game plugin.
 
-Animations from (DMC) Shiver Alpha by distar66, GPL v3. Disable the original Shiver Alpha mod if you have it, so the two don't compete.
+Animations from (DMC) Shiver Alpha by distar66, GPL v3. If another mod already gives you cold animations (shivering idles or cold walks, Shiver Alpha included), use either those or this option, not both, so they don't compete.
 
 Skip this if you are near your animation limit.</description>
               <files>

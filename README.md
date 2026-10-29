@@ -29,8 +29,9 @@ follower survival takes over their cold), SexLab or OStim (scene warmth).
 ## Installation
 
 Install the archive with your mod manager and pick the options in the installer. No game plugin is added, so
-removing the mod is safe. If you use **(DMC) Shiver Alpha**, disable it when you choose the Cold Shiver
-option, so the two don't compete.
+removing the mod is safe. If another mod already gives you cold animations (shivering idles or cold
+walks, such as (DMC) Shiver Alpha), use either those or the Cold Shiver option, not both: Open Animation
+Replacer plays one animation at a time, picked by priority, so the two would compete.
 
 ## What it does
 
