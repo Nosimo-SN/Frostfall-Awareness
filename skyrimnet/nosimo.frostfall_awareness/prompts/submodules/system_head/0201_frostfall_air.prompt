@@ -1,0 +1,26 @@
+{# 0201 - Frostfall Air: the air temperature where the player is, from Frostfall, for everyone in the scene #}
+{# Follows 0200 (scene context, which carries the weather). Always present while Frostfall runs: a short line
+   NPCs can make small talk about, and the air reference for NPCs whose own cold another mod (SeverActions'
+   survival) describes. Frostfall's Weathersense tiers, worded without the sun (it can be hot under cloud):
+   >= 18 hot, 15-17 warm, 11-14 pleasant, 10 temperate, 6-9 cool, 1-5 chilly, -4..0 cold, -9..-5 biting cold,
+   -14..-10 bone-chilling, < -14 frigid and deadly. FrostfallCurrentTemperatureReadOnly is the Update.esm mirror,
+   the same in both Frostfall builds; FrostfallRunning 2 = running. Frostfall gives interiors their own air
+   (temperate in a heated building), so the line always describes where the player is, indoors or out.
+#}
+{% if is_plugin_loaded("Frostfall.esp") and get_global_value("FrostfallRunning") == 2 %}
+{% set fa_temp = get_global_value("FrostfallCurrentTemperatureReadOnly") %}
+{% if fa_temp >= 18 %}{% set fa_air = "hot" %}
+{% else if fa_temp >= 15 %}{% set fa_air = "warm" %}
+{% else if fa_temp >= 11 %}{% set fa_air = "pleasant" %}
+{% else if fa_temp >= 10 %}{% set fa_air = "temperate" %}
+{% else if fa_temp >= 6 %}{% set fa_air = "cool" %}
+{% else if fa_temp >= 1 %}{% set fa_air = "chilly" %}
+{% else if fa_temp >= -4 %}{% set fa_air = "cold" %}
+{% else if fa_temp >= -9 %}{% set fa_air = "biting cold" %}
+{% else if fa_temp >= -14 %}{% set fa_air = "bone-chilling" %}
+{% else %}{% set fa_air = "frigid and deadly" %}
+{% endif %}
+{# Its own heading: 0200 ends with Recent Events, and an unheaded line would read as one of them. #}
+## Air Temperature
+The air is {{ fa_air }}.
+{% endif %}

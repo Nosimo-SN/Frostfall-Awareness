@@ -1,0 +1,15 @@
+{
+  "type": "bundle",
+  "id": "nosimo.frostfall_awareness",
+  "author": "nosimo",
+  "version": "1.0.0",
+  "min_skyrimnet_version": "0.25.0",
+  "title": "Frostfall Awareness",
+  "tagline": "People around you notice Frostfall's cold, warm you, and remember rescuing you from it",
+  "description": "Makes Frostfall's cold part of the conversation. Everyone in the scene knows the air temperature (0201_frostfall_air.prompt). A Cold Exposure section (0413_frostfall_exposure.prompt) tells the AI how cold a character is: for the player from Frostfall's own state (exposure, wetness, clothing and magical warmth, fire and shelter, frostbite), for NPCs outdoors an estimate from the same air and their body garment, never more than one step colder than the player. It appears only when the cold matters. The Frostfall_Awareness SKSE plugin narrates exposure and frostbite when they start and at intervals you set, never in combat or during conversation; lets nearby friends share body heat with you (FrostfallShareBodyHeat, which really warms you through Frostfall) or with each other (FrostfallWarmEachOther), with a hug and a warm glow; frosts over NPCs who are feeling the cold; warms you a little during SexLab or OStim scenes; and, when Frostfall rescues you from exposure, writes first-person memories for the companions who saved you and a hazy one for you. Vampires and the undead can be left out, and NPC hardiness adjusted. Everything is on this plugin's Settings page.",
+  "tags": ["survival", "followers", "memories", "settings", "actions"],
+  "nsfw": false,
+  "mods": [
+    { "name": "Frostfall - Hypothermia Camping Survival", "file": "Frostfall.esp", "required": true }
+  ]
+}

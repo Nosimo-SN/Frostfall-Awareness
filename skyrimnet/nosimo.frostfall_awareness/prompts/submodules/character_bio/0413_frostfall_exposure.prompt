@@ -1,0 +1,266 @@
+{# 0413 - Frostfall Exposure: cold exposure, wetness, frostbite, clothing and magical warmth #}
+{% if render_mode in ["full", "thoughts", "transform", "dialogue_target"] %}
+{# Player: read from Frostfall's own state. NPCs: Frostfall tracks only the player, so an NPC near the
+   player gets an estimate from the same air, Frostfall's exposure formula and their worn clothing, so they
+   can roleplay the cold (no debuffs exist for them).
+   - Shown only when the cold matters: exposure level 2+ (Chilly and worse) or frostbite (player only).
+   - Exposure levels: 2 Chilly, 3 Very Cold, 4 Freezing (frostbite risk), 5 Freezing to Death, 6 max (player only).
+     Player debuffs: 2 -10% regen, 3 -25% regen and -10 skills, 4 -50% / -30 / slowed, 5 -75% regen.
+   - Wet levels: 0 dry, 1 damp, 2 wet, 3 drenched.
+   - Air (_Frost_CurrentTemperature, the player's area) feeds the NPC estimate only; the air itself is told to
+     everyone by 0201_frostfall_air (system_head), so NPCs another mod tracks still get it.
+   - _Frost_NearFire / _Frost_IsTakingShelter / FrostfallRunning: 1 no, 2 yes (Frostfall's 1/2 convention).
+     Frostfall refreshes them on its own tick, so they can lag a few seconds.
+   Player warmth split: _Frost_AttributeWarmth = clothing + Foxskin/Wolfskin/Bearskin spell + torch 25
+     + hot meal 25 + half FrostResist (max 50) + Adaptation 20/rank + vampire 100 + beast 500.
+     Clothing warmth = total minus every bonus. Only the spell is described ("magical warmth"); the rest is
+     just removed. Coverage is clothing only.
+   NPC estimate:
+   - Body garment only (torso slot, or ArmorCuirass / ClothingBody); other slots are ignored because mod
+     outfits scatter over slots and keywords. Jewelry and FrostfallIgnore never count.
+   - Clothing tier: 0 bare, 1 Poor, 2 Fair, 3 Good, 4 Excellent+. FrostfallWarmth* / FrostfallCoverage*
+     keywords pick it; otherwise fur / hide / pelt in the name is Good, else Fair (Frostfall's default).
+     A.N.D. exposure (nude, topless, bottomless, showing underwear / chest / groin / rear) or no body
+     garment counts as bare. Frost resistance 50+ (Nords) holds off one tier.
+   - Wetness from the weather when outdoors (rain 2, snow 1). Fire and shelter are shared with the player
+     within 800 units.
+   - Felt cold = air tier (chilly 1, cold 2, biting 3, bone-chilling 4, frigid 5) - clothing tier
+     + 1 if rained on - 2 at a fire - 1 sheltered + the NPC Cold Shift setting (-2 hardier .. +2 sooner, read through
+     the DLL decorator frostfall_npc_cold_shift). 1 = Chilled, 2 = Very Cold, 3+ = Freezing,
+     then capped at one step colder than the player's real exposure level (never below Chilled, never
+     Freezing to Death): Frostfall's exposure builds over time and the estimate does not.
+     Examples at shift 0: an ordinary-dressed Nord is chilled in bone-chilling air and very cold in a
+     frigid blizzard; anyone in a revealing outfit is chilled by cool rain. Lower the shift to quiet NPCs down.
+   - Vampires and the undead are skipped when their settings say so (DLL decorator frostfall_cold_immune).
+   - NPCs outdoors only; SkyrimNet builds payloads just for NPCs in its range, so no distance check.
+     Children are skipped. Creatures are skipped by requiring a body garment or A.N.D. exposure
+     (actor_has_keyword does not see race keywords such as ActorTypeNPC).
+   - Rain makes the air one tier colder (cool air in rain counts as chilly) and adds +1 to the score.
+#}
+
+{% if is_plugin_loaded("Frostfall.esp") and get_global_value("FrostfallRunning") == 2 %}
+{% set fe_actor = decnpc(actorUUID) %}
+{% set fe_poss = fe_actor.possessiveAdjective %}
+{% set fe_is_player = is_player(actorUUID) %}
+{% set fe_temp = get_global_value("_Frost_CurrentTemperature") %}
+{% set fe_show = false %}
+
+{# A.N.D. (when installed): a revealing outfit leaves the body bare to the cold, for the player and NPCs alike #}
+{# Factions are only looked up when A.N.D. is installed #}
+{% set fe_nude = false %}
+{% set fe_skimpy = false %}
+{% if is_plugin_loaded("Advanced Nudity Detection.esp") %}
+    {% set fe_nude = get_faction_rank(actorUUID, "AND_NudeActorFaction") == 1 %}
+    {% set fe_skimpy = fe_nude or get_faction_rank(actorUUID, "AND_ToplessFaction") == 1 or get_faction_rank(actorUUID, "AND_BottomlessFaction") == 1 or get_faction_rank(actorUUID, "AND_ShowingChestFaction") == 1 or get_faction_rank(actorUUID, "AND_ShowingBraFaction") == 1 or get_faction_rank(actorUUID, "AND_ShowingGenitalsFaction") == 1 or get_faction_rank(actorUUID, "AND_ShowingAssFaction") == 1 or get_faction_rank(actorUUID, "AND_ShowingUnderwearFaction") == 1 %}
+{% endif %}
+
+{# SeverActions' follower survival, when on, tracks this NPC's cold and its 0170 prompt describes it, so the
+   NPC estimate steps aside. Same gate as SeverActions' prompt: the per-follower exclusion flag
+   (SeverActions_Survival_Excluded, which does not zero the value) plus sever_cold, which reads 0 for anyone
+   untracked and for everyone while the master switch is off. sever_cold comes from SeverActions' core DLL. #}
+{% set fe_sa_cold = 0 %}
+{% if not fe_is_player and is_plugin_loaded("SeverActions.esp") %}
+    {% if papyrus_util("GetIntValue", actorUUID, "SeverActions_Survival_Excluded", 0) == 0 %}
+        {% set fe_sa_cold = to_number(sever_cold(actorUUID)) %}
+    {% endif %}
+{% endif %}
+
+{% if fe_is_player %}
+    {% set fe_level = get_global_value("_Frost_ExposureLevel") %}
+    {% set fe_wet = get_global_value("_Frost_WetLevel") %}
+    {% set fe_coverage = get_global_value("_Frost_AttributeCoverage") %}
+    {% set fe_fire = get_global_value("_Frost_NearFire") == 2 %}
+    {% set fe_shelter = get_global_value("_Frost_IsTakingShelter") == 2 %}
+
+    {# Spell warmth, as Frostfall's GetSpellBonus #}
+    {% set fe_perk = 0 %}
+    {% if get_global_value("_Frost_ArmorPerk3Active") == 1 %}
+        {% set fe_perk = 3 %}
+    {% else if get_global_value("_Frost_ArmorPerk2Active") == 1 %}
+        {% set fe_perk = 2 %}
+    {% else if get_global_value("_Frost_ArmorPerk1Active") == 1 %}
+        {% set fe_perk = 1 %}
+    {% endif %}
+    {% set fe_spell = 0 %}
+    {% if has_magic_effect(actorUUID, "_Frost_ExposureArmorFFSelf_3") %}
+        {% if fe_perk == 3 %}{% set fe_spell = 90 %}{% else if fe_perk == 2 %}{% set fe_spell = 75 %}{% else if fe_perk == 1 %}{% set fe_spell = 60 %}{% else %}{% set fe_spell = 30 %}{% endif %}
+    {% else if has_magic_effect(actorUUID, "_Frost_ExposureArmorFFSelf_2") %}
+        {% if fe_perk == 3 %}{% set fe_spell = 60 %}{% else if fe_perk == 2 %}{% set fe_spell = 50 %}{% else if fe_perk == 1 %}{% set fe_spell = 40 %}{% else %}{% set fe_spell = 20 %}{% endif %}
+    {% else if has_magic_effect(actorUUID, "_Frost_ExposureArmorFFSelf_1") %}
+        {% if fe_perk == 3 %}{% set fe_spell = 30 %}{% else if fe_perk == 2 %}{% set fe_spell = 25 %}{% else if fe_perk == 1 %}{% set fe_spell = 20 %}{% else %}{% set fe_spell = 10 %}{% endif %}
+    {% endif %}
+
+    {# Other bonuses, removed from the total but not described #}
+    {% set fe_other = get_global_value("_Frost_PerkRank_Adaptation") * 20 %}
+    {% if has_magic_effect(actorUUID, "_Frost_TorchStateEffect") %}{% set fe_other = fe_other + 25 %}{% endif %}
+    {% if has_magic_effect(actorUUID, "_Frost_FoodBuff") %}{% set fe_other = fe_other + 25 %}{% endif %}
+    {% if has_magic_effect(actorUUID, "_Frost_VampireEffect") %}{% set fe_other = fe_other + 100 %}{% endif %}
+    {% if has_magic_effect(actorUUID, "_Frost_BeastEffect") %}{% set fe_other = fe_other + 500 %}{% endif %}
+    {% set fe_fr = get_actor_value(actorUUID, "FrostResist") / 2 %}
+    {% if fe_fr > 50 %}{% set fe_fr = 50 %}{% endif %}
+    {% if fe_fr > 0 %}{% set fe_other = fe_other + fe_fr %}{% endif %}
+
+    {% set fe_cwarm = get_global_value("_Frost_AttributeWarmth") - fe_spell - fe_other %}
+    {% if fe_cwarm < 0 %}{% set fe_cwarm = 0 %}{% endif %}
+
+    {% set fe_fb_body = has_magic_effect(actorUUID, "_Frost_FrostbiteBodyEffect") %}
+    {% set fe_fb_head = has_magic_effect(actorUUID, "_Frost_FrostbiteHeadEffect") %}
+    {% set fe_fb_hands = has_magic_effect(actorUUID, "_Frost_FrostbiteHandsEffect") %}
+    {% set fe_fb_feet = has_magic_effect(actorUUID, "_Frost_FrostbiteFeetEffect") %}
+    {% set fe_show = fe_level >= 2 or fe_fb_body or fe_fb_head or fe_fb_hands or fe_fb_feet %}
+
+{% else if fe_sa_cold <= 0 and not fe_actor.isChild and not is_indoors and frostfall_cold_immune(actorUUID) == "" %}
+    {% set fe_fb_body = false %}{% set fe_fb_head = false %}{% set fe_fb_hands = false %}{% set fe_fb_feet = false %}
+    {% set fe_spell = 0 %}
+
+    {# Body garment only: torso slot or body keywords. Mod outfits scatter over slots and keywords, but
+       nearly everything puts its main piece on the torso. Tiers: 0 bare, 1 Poor, 2 Fair, 3 Good, 4 Excellent+. #}
+    {% set fe_bt = -1 %}{% set fe_btc = -1 %}
+    {% for slot, item in get_worn_equipment(actorUUID) %}
+        {% set fe_is_body = item.slot_body_area == "Torso" %}
+        {% set fe_ignore = false %}
+        {% set fe_wt = -1 %}{% set fe_ct = -1 %}
+        {% for kw in item.keywords %}
+            {% set fe_k = kw.editorID %}
+            {% if fe_k == "FrostfallIgnore" or fe_k == "ArmorJewelry" %}{% set fe_ignore = true %}
+            {% else if fe_k == "ArmorCuirass" or fe_k == "ClothingBody" %}{% set fe_is_body = true %}
+            {% else if fe_k == "FrostfallWarmthPoor" %}{% set fe_wt = 1 %}
+            {% else if fe_k == "FrostfallWarmthFair" %}{% set fe_wt = 2 %}
+            {% else if fe_k == "FrostfallWarmthGood" %}{% set fe_wt = 3 %}
+            {% else if fe_k == "FrostfallWarmthExcellent" or fe_k == "FrostfallWarmthMax" %}{% set fe_wt = 4 %}
+            {% else if fe_k == "FrostfallCoveragePoor" %}{% set fe_ct = 1 %}
+            {% else if fe_k == "FrostfallCoverageFair" %}{% set fe_ct = 2 %}
+            {% else if fe_k == "FrostfallCoverageGood" %}{% set fe_ct = 3 %}
+            {% else if fe_k == "FrostfallCoverageExcellent" or fe_k == "FrostfallCoverageMax" %}{% set fe_ct = 4 %}
+            {% endif %}
+        {% endfor %}
+        {% if fe_is_body and not fe_ignore %}
+            {% if fe_wt < 0 %}
+                {# No Frostfall tier keyword: fur, hide and pelt count as Good, anything else Fair (Frostfall's default) #}
+                {% set fe_name = get_item_name(item.formID) %}
+                {% set fe_wt = 2 %}
+                {% if contains(fe_name, "Fur") or contains(fe_name, "fur") or contains(fe_name, "Hide") or contains(fe_name, "hide") or contains(fe_name, "Pelt") or contains(fe_name, "pelt") %}
+                    {% set fe_wt = 3 %}
+                {% endif %}
+            {% endif %}
+            {% if fe_ct < 0 %}{% set fe_ct = fe_wt %}{% endif %}
+            {% if fe_wt > fe_bt %}{% set fe_bt = fe_wt %}{% endif %}
+            {% if fe_ct > fe_btc %}{% set fe_btc = fe_ct %}{% endif %}
+        {% endif %}
+    {% endfor %}
+    {% set fe_dressed = fe_bt >= 0 %}
+
+    {# A.N.D. revealing outfits count as bare #}
+    {% if fe_skimpy or fe_bt < 0 %}
+        {% set fe_bt = 0 %}{% set fe_btc = 0 %}
+    {% endif %}
+
+    {# Frost resistance (Nords 50%) holds off one tier, as Frostfall adds half of it to warmth #}
+    {% set fe_fr = get_actor_value(actorUUID, "FrostResist") %}
+    {% set fe_cloth = fe_bt %}
+    {% if fe_fr >= 50 and fe_cloth < 4 %}{% set fe_cloth = fe_cloth + 1 %}{% endif %}
+
+    {# Outfit-equivalent warmth / coverage per tier, so the shared Clothing line reads the same as the player's #}
+    {% set fe_cwarm = at([30, 90, 160, 220, 280], fe_cloth) %}
+    {% set fe_coverage = at([20, 60, 110, 150, 200], fe_btc) %}
+
+    {% set fe_wet = 0 %}
+    {% if currentWeather.isRaining %}{% set fe_wet = 2 %}{% else if currentWeather.isSnowing %}{% set fe_wet = 1 %}{% endif %}
+    {% set fe_near = distance_between(actorUUID, player.UUID) < 800 %}
+    {% set fe_fire = fe_near and get_global_value("_Frost_NearFire") == 2 %}
+    {% set fe_shelter = fe_near and get_global_value("_Frost_IsTakingShelter") == 2 %}
+
+    {# Air tier against clothing tier. Frostfall's own exposure target is a ceiling that warmth only slows
+       the climb toward, so it would leave every NPC freezing; the tiers model how cold they feel now. #}
+    {% set fe_air = 0 %}
+    {% if fe_temp < -14 %}{% set fe_air = 5 %}{% else if fe_temp < -9 %}{% set fe_air = 4 %}{% else if fe_temp < -4 %}{% set fe_air = 3 %}{% else if fe_temp < 1 %}{% set fe_air = 2 %}{% else if fe_temp < 6 %}{% set fe_air = 1 %}{% endif %}
+    {% set fe_score = fe_air - fe_cloth + to_number(frostfall_npc_cold_shift(actorUUID)) %}
+    {# Rain makes the air one tier colder, so cool rain chills the lightly dressed #}
+    {% if fe_wet >= 2 %}
+        {% set fe_air = fe_air + 1 %}
+        {% set fe_score = fe_score + 1 %}
+    {% endif %}
+    {% if fe_fire %}{% set fe_score = fe_score - 2 %}{% endif %}
+    {% if fe_shelter %}{% set fe_score = fe_score - 1 %}{% endif %}
+    {% set fe_level = 0 %}
+    {# Creatures wear no body garment and carry no A.N.D. factions, so they never qualify #}
+    {% if (fe_dressed or fe_skimpy) and fe_air > 0 and fe_score >= 1 %}
+        {% set fe_level = fe_score + 1 %}
+        {# Frostfall's exposure builds over time and the estimate does not, so the player's real exposure
+           level is the clock: an NPC is at most one step colder than the player, never below Chilled,
+           and never Freezing to Death. #}
+        {% set fe_cap = get_global_value("_Frost_ExposureLevel") + 1 %}
+        {% if fe_cap < 2 %}{% set fe_cap = 2 %}{% endif %}
+        {% if fe_cap > 4 %}{% set fe_cap = 4 %}{% endif %}
+        {% if fe_level > fe_cap %}{% set fe_level = fe_cap %}{% endif %}
+    {% endif %}
+    {% set fe_show = fe_level >= 2 %}
+{% endif %}
+
+{# --- Output --- #}
+{% if fe_show %}
+### Cold Exposure
+{% if fe_level >= 6 %}
+- Condition: succumbing to the cold - near collapse, unable to keep going without warmth.
+{% else if fe_level == 5 %}
+- Condition: freezing to death - shaking violently, lips blue, movements slow and stumbling; in real danger without warmth soon.
+{% else if fe_level == 4 %}
+- Condition: freezing - shivering uncontrollably, limbs stiff and slow, exposed skin at risk of frostbite.
+{% else if fe_level == 3 %}
+- Condition: very cold - shivering hard, fingers clumsy, strength and focus failing.
+{% else if fe_level == 2 %}
+- Condition: chilled - the cold is starting to wear {{ fe_poss }} strength down.
+{% endif %}
+{% if fe_level >= 2 %}
+{% if fe_wet >= 3 %}
+- Wetness: soaked through, which makes the cold far worse.
+{% else if fe_wet == 2 %}
+- Wetness: wet clothes and hair, which make the cold worse.
+{% else if fe_wet == 1 %}
+- Wetness: damp.
+{% endif %}
+{% if fe_nude %}
+- Clothing: none; {{ fe_poss }} whole body is bare to the cold.
+{% else if fe_skimpy %}
+- Clothing: a revealing outfit leaves much of {{ fe_poss }} body bare to the cold.
+{% else if fe_cwarm < 60 %}
+- Clothing: gives almost no warmth{% if fe_coverage < 40 %}; almost no protection from wind and wet{% endif %}.
+{% else if fe_cwarm < 120 %}
+- Clothing: gives little warmth{% if fe_coverage < 80 %}; little protection from wind and wet{% endif %}.
+{% else if fe_cwarm < 190 %}
+- Clothing: only moderately warm{% if fe_coverage < 80 %}; little protection from wind and wet{% endif %}.
+{% else %}
+- Clothing: warm, but not enough for these conditions{% if fe_coverage < 80 %}; little protection from wind and wet{% endif %}.
+{% endif %}
+{% if fe_spell >= 75 %}
+- Magical warmth: a powerful warming spell holds much of the cold at bay.
+{% else if fe_spell >= 40 %}
+- Magical warmth: a strong warming spell takes the edge off the cold.
+{% else if fe_spell >= 20 %}
+- Magical warmth: a modest warming spell helps a little.
+{% else if fe_spell > 0 %}
+- Magical warmth: a faint warming spell, barely noticeable against the cold.
+{% endif %}
+{% if fe_fire and fe_shelter %}
+- Relief: sheltered and warming by a fire.
+{% else if fe_fire %}
+- Relief: warming by a fire.
+{% else if fe_shelter %}
+- Relief: sheltered from the weather.
+{% endif %}
+{% endif %}
+{% if fe_fb_head %}
+- Frostbite (face and ears): skin raw and discoloured; speech and spellcasting suffer.
+{% endif %}
+{% if fe_fb_hands %}
+- Frostbite (hands): fingers numb and swollen; weapons, bows and fine work suffer.
+{% endif %}
+{% if fe_fb_feet %}
+- Frostbite (feet): toes numb; walking slowed and unsteady.
+{% endif %}
+{% if fe_fb_body %}
+- Frostbite (body): deep cold injury; recovery of health, stamina and magicka slowed.
+{% endif %}
+{% endif %}
+{% endif %}
+{% endif %}

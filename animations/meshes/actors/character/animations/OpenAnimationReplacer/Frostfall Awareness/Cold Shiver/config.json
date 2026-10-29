@@ -1,0 +1,463 @@
+{
+    "name": "Cold Shiver",
+    "description": "Shivering idle and walk while cold. The player shivers from Frostfall's Very Cold on; NPCs outdoors shiver while the player is at least Chilly and the air is cold enough for what they wear: revealing clothing (A.N.D.) below 1 (below 6 in rain), anyone below -9, and 50+ frost resistance one band colder. Vampires and the undead never shiver. Animations: (DMC) Shiver Alpha by distar66, GPL v3.",
+    "priority": 90000100,
+    "interruptible": true,
+    "conditions": [
+        {
+            "condition": "CompareValues",
+            "requiredVersion": "1.0.0.0",
+            "Value A": {
+                "form": {
+                    "pluginName": "Frostfall.esp",
+                    "formID": "6DCFB"
+                }
+            },
+            "Comparison": "==",
+            "Value B": {
+                "value": 2.0
+            }
+        },
+        {
+            "condition": "IsInCombat",
+            "requiredVersion": "1.0.0.0",
+            "negated": true
+        },
+        {
+            "condition": "OR",
+            "requiredVersion": "1.0.0.0",
+            "Conditions": [
+                {
+                    "condition": "AND",
+                    "requiredVersion": "1.0.0.0",
+                    "Conditions": [
+                        {
+                            "condition": "IsActorBase",
+                            "requiredVersion": "1.0.0.0",
+                            "Actor base": {
+                                "pluginName": "Skyrim.esm",
+                                "formID": "7"
+                            }
+                        },
+                        {
+                            "condition": "CompareValues",
+                            "requiredVersion": "1.0.0.0",
+                            "Value A": {
+                                "form": {
+                                    "pluginName": "Update.esm",
+                                    "formID": "CC0E06"
+                                }
+                            },
+                            "Comparison": ">=",
+                            "Value B": {
+                                "value": 3.0
+                            }
+                        }
+                    ]
+                },
+                {
+                    "condition": "AND",
+                    "requiredVersion": "1.0.0.0",
+                    "Conditions": [
+                        {
+                            "condition": "IsActorBase",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true,
+                            "Actor base": {
+                                "pluginName": "Skyrim.esm",
+                                "formID": "7"
+                            }
+                        },
+                        {
+                            "condition": "IsChild",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true
+                        },
+                        {
+                            "condition": "HasKeyword",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true,
+                            "Keyword": {
+                                "form": {
+                                    "pluginName": "Skyrim.esm",
+                                    "formID": "A82BB"
+                                }
+                            }
+                        },
+                        {
+                            "condition": "HasKeyword",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true,
+                            "Keyword": {
+                                "form": {
+                                    "pluginName": "Skyrim.esm",
+                                    "formID": "13796"
+                                }
+                            }
+                        },
+                        {
+                            "condition": "IsInInterior",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true
+                        },
+                        {
+                            "condition": "CompareValues",
+                            "requiredVersion": "1.0.0.0",
+                            "Value A": {
+                                "form": {
+                                    "pluginName": "Update.esm",
+                                    "formID": "CC0E06"
+                                }
+                            },
+                            "Comparison": ">=",
+                            "Value B": {
+                                "value": 2.0
+                            }
+                        },
+                        {
+                            "condition": "OR",
+                            "requiredVersion": "1.0.0.0",
+                            "Conditions": [
+                                {
+                                    "condition": "AND",
+                                    "requiredVersion": "1.0.0.0",
+                                    "Conditions": [
+                                        {
+                                            "condition": "OR",
+                                            "requiredVersion": "1.0.0.0",
+                                            "Conditions": [
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "831"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "832"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "833"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "82F"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "834"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "830"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "82E"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "835"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "condition": "CompareValues",
+                                            "requiredVersion": "1.0.0.0",
+                                            "Value A": {
+                                                "actorValue": 43,
+                                                "actorValueType": "Value"
+                                            },
+                                            "Comparison": "<",
+                                            "Value B": {
+                                                "value": 50.0
+                                            }
+                                        },
+                                        {
+                                            "condition": "OR",
+                                            "requiredVersion": "1.0.0.0",
+                                            "Conditions": [
+                                                {
+                                                    "condition": "CompareValues",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Value A": {
+                                                        "form": {
+                                                            "pluginName": "Update.esm",
+                                                            "formID": "CC0E07"
+                                                        }
+                                                    },
+                                                    "Comparison": "<",
+                                                    "Value B": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "AND",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Conditions": [
+                                                        {
+                                                            "condition": "CurrentWeatherHasFlag",
+                                                            "requiredVersion": "1.2.0.0",
+                                                            "Flag": {
+                                                                "value": 2.0
+                                                            }
+                                                        },
+                                                        {
+                                                            "condition": "CompareValues",
+                                                            "requiredVersion": "1.0.0.0",
+                                                            "Value A": {
+                                                                "form": {
+                                                                    "pluginName": "Update.esm",
+                                                                    "formID": "CC0E07"
+                                                                }
+                                                            },
+                                                            "Comparison": "<",
+                                                            "Value B": {
+                                                                "value": 6.0
+                                                            }
+                                                        }
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                },
+                                {
+                                    "condition": "AND",
+                                    "requiredVersion": "1.0.0.0",
+                                    "Conditions": [
+                                        {
+                                            "condition": "OR",
+                                            "requiredVersion": "1.0.0.0",
+                                            "Conditions": [
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "831"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "832"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "833"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "82F"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "834"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "830"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "82E"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                },
+                                                {
+                                                    "condition": "FactionRank",
+                                                    "requiredVersion": "1.0.0.0",
+                                                    "Faction": {
+                                                        "pluginName": "Advanced Nudity Detection.esp",
+                                                        "formID": "835"
+                                                    },
+                                                    "Comparison": "==",
+                                                    "Numeric value": {
+                                                        "value": 1.0
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "condition": "CompareValues",
+                                            "requiredVersion": "1.0.0.0",
+                                            "Value A": {
+                                                "form": {
+                                                    "pluginName": "Update.esm",
+                                                    "formID": "CC0E07"
+                                                }
+                                            },
+                                            "Comparison": "<",
+                                            "Value B": {
+                                                "value": -9.0
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "condition": "AND",
+                                    "requiredVersion": "1.0.0.0",
+                                    "Conditions": [
+                                        {
+                                            "condition": "CompareValues",
+                                            "requiredVersion": "1.0.0.0",
+                                            "Value A": {
+                                                "actorValue": 43,
+                                                "actorValueType": "Value"
+                                            },
+                                            "Comparison": "<",
+                                            "Value B": {
+                                                "value": 50.0
+                                            }
+                                        },
+                                        {
+                                            "condition": "CompareValues",
+                                            "requiredVersion": "1.0.0.0",
+                                            "Value A": {
+                                                "form": {
+                                                    "pluginName": "Update.esm",
+                                                    "formID": "CC0E07"
+                                                }
+                                            },
+                                            "Comparison": "<",
+                                            "Value B": {
+                                                "value": -9.0
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "condition": "CompareValues",
+                                    "requiredVersion": "1.0.0.0",
+                                    "Value A": {
+                                        "form": {
+                                            "pluginName": "Update.esm",
+                                            "formID": "CC0E07"
+                                        }
+                                    },
+                                    "Comparison": "<",
+                                    "Value B": {
+                                        "value": -14.0
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

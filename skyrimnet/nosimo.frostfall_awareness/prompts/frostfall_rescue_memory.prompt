@@ -1,0 +1,54 @@
+[ system ]
+You write memories for characters in Skyrim after a rescue from deadly cold. Output ONLY a JSON object. No explanation, no commentary, no code fences.
+
+{{ render_template("submodules//system_head//0010_setting") }}
+
+Each memory is first person, from that character's own perspective, a concise recollection of 3-5 sentences: specific names, places and actions, dense rather than flowery. Do not use relative time words ("last week", "yesterday"). Include brief emotional context only where it matters. Stay consistent with the facts given; do not invent injuries beyond cold and frostbite, other people present, or events that change what happened.
+
+Memory fields:
+- "content": the memory text.
+- "emotion": one of joyful, content, neutral, concerned, fearful, angry, disgusted, surprised, sad, traumatized.
+- "importance_score": 0.0-1.0. Saving someone's life, or nearly dying, is usually 0.7-0.9.
+- "type": one of EXPERIENCE, RELATIONSHIP, KNOWLEDGE, LOCATION, SKILL, TRAUMA, JOY.
+- "tags": 5-10 short tags (names, places, "cold", "rescue", themes).
+[ end system ]
+
+[ user ]
+{{ playerName }} ({{ playerSubject }}/{{ playerObject }}/{{ playerPossessive }}) collapsed from exposure to the cold{% if inWater %} while in freezing water{% endif %} at {{ fallLocation }}. The weather was {{ weather }}. About {{ hoursPassed }} hours later {{ playerName }} came to at {{ arrivalLocation }}.
+
+{% if scenario != "" %}
+How the rescue went, as {{ playerName }} experienced it (second person, about {{ playerName }}):
+"{{ scenario }}"
+{% else %}
+How exactly the rescue went is not known: only that {{ playerName }} was carried or dragged from {{ fallLocation }} to {{ arrivalLocation }}.
+{% endif %}
+
+{% if length(rescuers) > 0 %}
+The rescuers:
+{% for r in rescuers %}
+- {{ r.name }}{% if r.race != "" %} ({{ r.race }}){% endif %}{% if r.creature %}, an animal companion{% endif %}
+{% set rUUID = formid_to_uuid(r.formId) %}
+{% if not r.creature and rUUID and rUUID != 0 %}
+{% set rSummary = render_character_profile("bio_summary", rUUID) %}
+{% set rPersonality = render_character_profile("bio_personality", rUUID) %}
+{% if rSummary != "" %}  {{ rSummary }}{% endif %}
+{% if rPersonality != "" %}  Personality: {{ rPersonality }}{% endif %}
+{% endif %}
+{% endfor %}
+
+Write one memory for each rescuer who is not an animal, from their own perspective: how they rescued {{ playerName }} from the cold, what they did to save {{ playerObject }} and get {{ playerObject }} to safety, and how they felt. For them this is the time they saved {{ playerName }}'s life, and they remember it that way. Several rescuers each remember their own part and may mention the others. Animal companions get no memory, but the others may remember them.
+{% else %}
+{{ playerName }} had no companion along. Whoever helped is described only in the account above; write no rescuer memories.
+{% endif %}
+
+{% if playerMemory %}
+Also write {{ playerName }}'s own memory: hazy and fragmented, the cold closing in, blacking out, and only glimpses of what followed{% if length(rescuers) > 0 %}: a blurred sense of being carried or dragged, a voice or face of the rescuer{% endif %}, then waking at {{ arrivalLocation }}{% if length(rescuers) > 0 %} and knowing someone saved {{ playerObject }}{% endif %}. Keep it uncertain, the way a half-conscious person remembers.
+{% endif %}
+
+Also write "event": one neutral third-person sentence stating what happened (who rescued whom, from where, and where they were brought), for the scene record.
+
+Answer with exactly this JSON shape ("name" is the rescuer's exact name as listed):
+{% raw %}{"rescuers":[{"name":"...","content":"...","emotion":"...","importance_score":0.8,"type":"EXPERIENCE","tags":["..."]}],"player":{"content":"...","emotion":"...","importance_score":0.7,"type":"TRAUMA","tags":["..."]},"event":"..."}{% endraw %}
+{% if length(rescuers) == 0 %}"rescuers" is an empty array.{% endif %}
+{% if not playerMemory %}Leave "player" out.{% endif %}
+[ end user ]

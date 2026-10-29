@@ -1,0 +1,32 @@
+name: FrostfallShareBodyHeat
+description: "Use when {{ player.name }} is suffering from the cold and the speaker means, in this line, to warm {{ player.name }} with their own body: holding them close, wrapping them in their arms or cloak, sharing body heat. It warms {{ player.name }} a little; only a fire or shelter can make them truly warm again."
+# Frostfall's own exposure function: ModExposure(float amount, float limit) on the exposure system quest.
+# A negative amount warms; limit stops the change at that exposure (40 = the start of Chilly), so body heat
+# can pull the player back from Freezing but never makes them comfortable. Two VM parameters, two mappings.
+questEditorId: _Frost_System_Exposure
+scriptName: _Frost_ExposureSystem
+executionFunctionName: ModExposure
+parameterMapping:
+  - type: static
+    value: -10.0
+    name: amount
+    description: Exposure removed by one huddle, on Frostfall's 0-120 scale
+  - type: static
+    value: 40.0
+    name: limit
+    description: Exposure the huddle never goes below (40 = the start of Chilly)
+enabled: true
+eligibilityRules:
+  # Frostfall Awareness decorator: "" when the speaker can share body heat (the player is Chilly or worse,
+  # out of combat, and the speaker is a friendly adult standing close), otherwise the reason they can't.
+  - conditions:
+      - decoratorName: "frostfall_share_heat_block"
+        arguments: ["currentActor"]
+        comparisonOperator: "=="
+        expectedValue: ""
+    logicalOperator: "AND"
+    required: true
+tags: []
+eventString: "{{ actor.name }} holds {{ player.name }} close, sharing body heat against the cold"
+isShortLived: false
+defaultPriority: 7

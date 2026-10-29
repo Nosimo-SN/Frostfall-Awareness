@@ -1,0 +1,31 @@
+name: FrostfallWarmEachOther
+description: "Use when the speaker means, in this line, to warm another person close by who is feeling the cold (not {{ player.name }}) with their own body: holding them close, wrapping them in their arms or cloak, sharing body heat. target is that person."
+# Frostfall tracks only the player, so this is the gesture alone: the Frostfall_Awareness DLL plays the hug and
+# the warm glow and keeps the frost off both of them for a while. The call itself borrows SkyrimNet's own
+# skynet_MainController.SetActorDialogueTarget (a member function on its always-loaded controller quest): the
+# speaker turns to the target and walks over as for a conversation; the DLL releases them once the hug is over.
+questEditorId: skynet_MainController
+scriptName: skynet_MainController
+executionFunctionName: SetActorDialogueTarget
+parameterMapping:
+  - type: speaker
+    name: akActor
+    description: The person sharing their warmth
+  - type: dynamic
+    name: target
+    description: The cold person being warmed (not {{ player.name }})
+enabled: true
+eligibilityRules:
+  # Frostfall Awareness decorator: "" when the speaker is a friendly adult near the player outdoors with someone
+  # cold close by (the player at least Chilly, not in combat), otherwise the reason they can't.
+  - conditions:
+      - decoratorName: "frostfall_warm_other_block"
+        arguments: ["currentActor"]
+        comparisonOperator: "=="
+        expectedValue: ""
+    logicalOperator: "AND"
+    required: true
+tags: []
+eventString: "{{ actor.name }} pulls {{ target }} close, the two sharing their warmth against the cold"
+isShortLived: false
+defaultPriority: 6

@@ -1,0 +1,10 @@
+# build output and logs
+build/
+build-log*.txt
+
+# editor / OS clutter
+.vs/
+.vscode/
+*.user
+Thumbs.db
+__pycache__/

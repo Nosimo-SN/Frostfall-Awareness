@@ -1,0 +1,386 @@
+plugin:
+  name: "Frostfall Awareness"
+  version: "1.0.0"
+  description: >-
+    Turns Frostfall's cold into something the people around you notice. While Frostfall applies its
+    exposure or frostbite penalties to you, the Frostfall_Awareness SKSE plugin posts a short narration
+    line when a condition starts and repeats it at the interval you set while it lasts. Nothing is posted
+    in combat or while a conversation is going on. When Frostfall rescues you from exposure, the people
+    who saved you remember it, and you keep a hazy memory of blacking out. Changes apply within about ten
+    seconds, no restart needed.
+  icon: "❄️"
+
+schema:
+  fields:
+    # --- General ---------------------------------------------------------------------------------
+    - name: "Enable Cold Narration"
+      path: "general.enabled"
+      type: "bool"
+      description: "Master switch for exposure and frostbite narration. Rescue memories have their own switch below."
+      defaultValue: true
+      category: "General"
+
+    - name: "Force A Reaction"
+      path: "general.force_reaction"
+      type: "bool"
+      description: "On: posted as direct narration, so someone nearby reacts right away. Off: logged as a quiet scene event that people know about and may bring up later."
+      defaultValue: true
+      category: "General"
+
+    - name: "Your Own Thought"
+      path: "general.player_thought"
+      type: "bool"
+      description: "Narration only reaches the people around you. On: each cold narration also prompts a thought of your character's own, which SkyrimNet shows and voices like any player thought, so you feel the cold too."
+      defaultValue: true
+      category: "General"
+
+    - name: "Minimum Gap (seconds)"
+      path: "general.min_gap"
+      type: "int"
+      description: "After any cold narration, nothing else is narrated for this long, so several conditions don't pile up."
+      defaultValue: 60
+      min: 0
+      max: 600
+      category: "General"
+
+    - name: "Quiet After Dialogue (seconds)"
+      path: "general.dialogue_quiet"
+      type: "int"
+      description: "Wait until no SkyrimNet dialogue has happened for this long, so narration doesn't crowd a conversation."
+      defaultValue: 15
+      min: 0
+      max: 120
+      category: "General"
+
+    - name: "Quiet After Combat (seconds)"
+      path: "general.combat_grace"
+      type: "int"
+      description: "Nothing is narrated in combat (Frostfall pauses exposure there anyway) or for this long after it ends."
+      defaultValue: 10
+      min: 0
+      max: 120
+      category: "General"
+
+    # --- Conditions ------------------------------------------------------------------------------
+    - name: "Narrate: Chilly"
+      path: "narrate.chilly"
+      type: "bool"
+      description: "Exposure level Chilly: -10% health, stamina and magicka regeneration. Narrated when it starts (only when getting colder, never when warming up)."
+      defaultValue: true
+      category: "Conditions"
+
+    - name: "Repeat: Chilly (seconds)"
+      path: "repeat.chilly"
+      type: "int"
+      description: "Narrate again every this many seconds while it lasts. 0 = only when it starts."
+      defaultValue: 480
+      min: 0
+      max: 1200
+      category: "Conditions"
+
+    - name: "Narrate: Very Cold"
+      path: "narrate.very_cold"
+      type: "bool"
+      description: "Exposure level Very Cold: -25% regeneration, -10 to skills. Narrated when it starts (only when getting colder, never when warming up)."
+      defaultValue: true
+      category: "Conditions"
+
+    - name: "Repeat: Very Cold (seconds)"
+      path: "repeat.very_cold"
+      type: "int"
+      description: "Narrate again every this many seconds while it lasts. 0 = only when it starts."
+      defaultValue: 240
+      min: 0
+      max: 1200
+      category: "Conditions"
+
+    - name: "Narrate: Freezing"
+      path: "narrate.freezing"
+      type: "bool"
+      description: "Exposure level Freezing: -50% regeneration, -30 to skills, slowed, frostbite risk. Narrated when it starts (only when getting colder, never when warming up)."
+      defaultValue: true
+      category: "Conditions"
+
+    - name: "Repeat: Freezing (seconds)"
+      path: "repeat.freezing"
+      type: "int"
+      description: "Narrate again every this many seconds while it lasts. 0 = only when it starts."
+      defaultValue: 120
+      min: 0
+      max: 1200
+      category: "Conditions"
+
+    - name: "Narrate: Freezing to Death"
+      path: "narrate.freezing_to_death"
+      type: "bool"
+      description: "Exposure level Freezing to Death (and max exposure): -75% regeneration. Narrated when it starts (only when getting colder, never when warming up)."
+      defaultValue: true
+      category: "Conditions"
+
+    - name: "Repeat: Freezing to Death (seconds)"
+      path: "repeat.freezing_to_death"
+      type: "int"
+      description: "Narrate again every this many seconds while it lasts. 0 = only when it starts."
+      defaultValue: 60
+      min: 0
+      max: 1200
+      category: "Conditions"
+
+    - name: "Narrate: Frostbite (Feet)"
+      path: "narrate.frostbite_feet"
+      type: "bool"
+      description: "Frostbitten feet: -10 Sneak, slower movement. Narrated when it starts (only when getting colder, never when warming up)."
+      defaultValue: true
+      category: "Conditions"
+
+    - name: "Repeat: Frostbite (Feet) (seconds)"
+      path: "repeat.frostbite_feet"
+      type: "int"
+      description: "Narrate again every this many seconds while it lasts. 0 = only when it starts."
+      defaultValue: 240
+      min: 0
+      max: 1200
+      category: "Conditions"
+
+    - name: "Narrate: Frostbite (Hands)"
+      path: "narrate.frostbite_hands"
+      type: "bool"
+      description: "Frostbitten hands: weapon, block, lockpicking and pickpocket penalties. Narrated when it starts (only when getting colder, never when warming up)."
+      defaultValue: true
+      category: "Conditions"
+
+    - name: "Repeat: Frostbite (Hands) (seconds)"
+      path: "repeat.frostbite_hands"
+      type: "int"
+      description: "Narrate again every this many seconds while it lasts. 0 = only when it starts."
+      defaultValue: 240
+      min: 0
+      max: 1200
+      category: "Conditions"
+
+    - name: "Narrate: Frostbite (Body)"
+      path: "narrate.frostbite_body"
+      type: "bool"
+      description: "Frostbitten body: -25% regeneration. Narrated when it starts (only when getting colder, never when warming up)."
+      defaultValue: true
+      category: "Conditions"
+
+    - name: "Repeat: Frostbite (Body) (seconds)"
+      path: "repeat.frostbite_body"
+      type: "int"
+      description: "Narrate again every this many seconds while it lasts. 0 = only when it starts."
+      defaultValue: 120
+      min: 0
+      max: 1200
+      category: "Conditions"
+
+    - name: "Narrate: Frostbite (Head)"
+      path: "narrate.frostbite_head"
+      type: "bool"
+      description: "Frostbitten face and ears: Speech and magic penalties. Narrated when it starts (only when getting colder, never when warming up)."
+      defaultValue: true
+      category: "Conditions"
+
+    - name: "Repeat: Frostbite (Head) (seconds)"
+      path: "repeat.frostbite_head"
+      type: "int"
+      description: "Narrate again every this many seconds while it lasts. 0 = only when it starts."
+      defaultValue: 60
+      min: 0
+      max: 1200
+      category: "Conditions"
+
+    # --- Narration text --------------------------------------------------------------------------
+    - name: "Text: Chilly"
+      path: "text.chilly"
+      type: "string"
+      description: "Placeholders: {name} = your character, {their} = his/her, {they} = he/she, {them} = him/her. Describe what can be seen; let the people around you decide how to react."
+      defaultValue: "{name} shivers as the cold begins to sap {their} strength."
+      category: "Narration Text"
+
+    - name: "Text: Very Cold"
+      path: "text.very_cold"
+      type: "string"
+      description: "Placeholders: {name} = your character, {their} = his/her, {they} = he/she, {them} = him/her. Describe what can be seen; let the people around you decide how to react."
+      defaultValue: "{name} is shivering hard, fingers clumsy with cold."
+      category: "Narration Text"
+
+    - name: "Text: Freezing"
+      path: "text.freezing"
+      type: "string"
+      description: "Placeholders: {name} = your character, {their} = his/her, {they} = he/she, {them} = him/her. Describe what can be seen; let the people around you decide how to react."
+      defaultValue: "{name} is shaking uncontrollably, limbs stiff and slow with cold."
+      category: "Narration Text"
+
+    - name: "Text: Freezing to Death"
+      path: "text.freezing_to_death"
+      type: "string"
+      description: "Placeholders: {name} = your character, {their} = his/her, {they} = he/she, {them} = him/her. Describe what can be seen; let the people around you decide how to react."
+      defaultValue: "{name} stumbles through the cold, lips blue, barely able to move."
+      category: "Narration Text"
+
+    - name: "Text: Frostbite (Feet)"
+      path: "text.frostbite_feet"
+      type: "string"
+      description: "Placeholders: {name} = your character, {their} = his/her, {they} = he/she, {them} = him/her. Describe what can be seen; let the people around you decide how to react."
+      defaultValue: "{name} walks stiffly on frostbitten feet."
+      category: "Narration Text"
+
+    - name: "Text: Frostbite (Hands)"
+      path: "text.frostbite_hands"
+      type: "string"
+      description: "Placeholders: {name} = your character, {their} = his/her, {they} = he/she, {them} = him/her. Describe what can be seen; let the people around you decide how to react."
+      defaultValue: "{name}'s fingers are numb and swollen with frostbite."
+      category: "Narration Text"
+
+    - name: "Text: Frostbite (Body)"
+      path: "text.frostbite_body"
+      type: "string"
+      description: "Placeholders: {name} = your character, {their} = his/her, {they} = he/she, {them} = him/her. Describe what can be seen; let the people around you decide how to react."
+      defaultValue: "Frostbite has bitten deep into {name}'s body."
+      category: "Narration Text"
+
+    - name: "Text: Frostbite (Head)"
+      path: "text.frostbite_head"
+      type: "string"
+      description: "Placeholders: {name} = your character, {their} = his/her, {they} = he/she, {them} = him/her. Describe what can be seen; let the people around you decide how to react."
+      defaultValue: "{name}'s face and ears are raw and white with frostbite."
+      category: "Narration Text"
+
+    # --- Rescue ----------------------------------------------------------------------------------
+    - name: "Rescue Memories"
+      path: "rescue.memories"
+      type: "bool"
+      description: "When Frostfall rescues you (Max Exposure set to rescue), the companions who saved you get a first-person memory of it. Only Frostfall's own rescue counts: if another mod takes over the collapse, nothing is written. One LLM call per rescue."
+      defaultValue: true
+      category: "Rescue"
+
+    - name: "Your Hazy Memory"
+      path: "rescue.player_memory"
+      type: "bool"
+      description: "You also get a memory: a hazy recollection of blacking out and glimpses of your rescuer."
+      defaultValue: true
+      category: "Rescue"
+
+    - name: "Rescue Event"
+      path: "rescue.event"
+      type: "bool"
+      description: "Also log a one-line scene event about the rescue, so people around you know what happened."
+      defaultValue: true
+      category: "Rescue"
+
+    - name: "The Room Sees You Brought In"
+      path: "rescue.arrival_line"
+      type: "bool"
+      description: "As you come to, the people around you are told your rescuer has carried you in from the cold, so the innkeeper or patrons can react. Your rescuer's own line follows a few seconds later. Only when a companion or animal brought you somewhere new."
+      defaultValue: true
+      category: "Rescue"
+
+    - name: "Rescuer Speaks When You Wake"
+      path: "rescue.wake_line"
+      type: "bool"
+      description: "Once you are back on your feet and the room is quiet, your waking is narrated to your rescuer alone, so they are the one who speaks to you, already remembering the rescue. Only when a companion (not an animal) saved you."
+      defaultValue: true
+      category: "Rescue"
+
+    - name: "Quiet After Rescue (seconds)"
+      path: "rescue.quiet"
+      type: "int"
+      description: "After a rescue, no cold narration for this long, so waking up isn't crowded. Conditions you already had on the mountain (and the frostbite Frostfall rolls as you wake) are not announced again; their repeats count from the rescue."
+      defaultValue: 180
+      min: 0
+      max: 600
+      category: "Rescue"
+
+    - name: "Stop Dialogue On Collapse"
+      path: "rescue.purge_dialogue"
+      type: "bool"
+      description: "Stop all queued and playing NPC dialogue (SkyrimNet's purge) twice: when Frostfall's rescue is confirmed, so lines started on the mountain don't follow you, and again as you dismiss the rescue message, so nothing generated during the blackout plays over your waking. You are unconscious in between anyway."
+      defaultValue: true
+      category: "Rescue"
+
+    # --- Share Body Heat ---------------------------------------------------------------------------
+    - name: "Share Body Heat Action"
+      path: "huddle.enabled"
+      type: "bool"
+      description: "Lets friendly people standing close to you (about 10 metres) huddle with you and share body heat while you are Chilly or worse, outside combat; the AI decides whether that character would. Each huddle removes 10 exposure through Frostfall's own exposure function and never takes you below Chilly, so only fire or shelter truly warms you. The action is FrostfallShareBodyHeat in SkyrimNet's action library, where you can also give it a cooldown."
+      defaultValue: true
+      category: "Share Body Heat"
+
+    - name: "Warm Each Other"
+      path: "huddle.npc_enabled"
+      type: "bool"
+      description: "Lets people near you warm each other too: someone may pull a cold companion or bystander close, with the hug and glow below. Frostfall only tracks you, so it is the gesture alone, though the warmed pair lose their frost look for five minutes. The action is FrostfallWarmEachOther in SkyrimNet's action library."
+      defaultValue: true
+      category: "Share Body Heat"
+
+    - name: "Hug Animation"
+      path: "huddle.hug"
+      type: "bool"
+      description: "When someone shares body heat, they pull you into the vanilla hug. It may not start if either of you is sitting, riding or mid-move; the warming applies anyway."
+      defaultValue: true
+      category: "Share Body Heat"
+
+    - name: "Warm Glow"
+      path: "huddle.glow"
+      type: "bool"
+      description: "A brief warm glow (the resist-fire potion shimmer) on both of you as the heat is shared."
+      defaultValue: true
+      category: "Share Body Heat"
+
+    # --- NPC Frost --------------------------------------------------------------------------------
+    - name: "Frost On NPCs"
+      path: "frost.npc_shader"
+      type: "bool"
+      description: "NPCs outdoors who are feeling the cold get Frostfall's frost look, like yours: the lighter frost at Freezing, the full one at Freezing to Death. Their cold follows yours (one step colder in revealing clothing, per A.N.D.), the air, and 50+ frost resistance, the same rules as the optional Cold Shiver animations. The frost fades within seconds once they warm up, go indoors or you leave, or when this is switched off."
+      defaultValue: true
+      category: "NPC Frost"
+
+    # --- NPC Cold ---------------------------------------------------------------------------------
+    - name: "NPC Cold Shift"
+      path: "npc.cold_shift"
+      type: "int"
+      description: "How readily NPCs feel the cold, in whole steps of air temperature: -2 = much hardier, 0 = default, +2 = they feel it much sooner. Applies to how NPCs are described to the AI, their frost look and who can be warmed; the optional Cold Shiver animations keep the default."
+      defaultValue: 0
+      min: -2
+      max: 2
+      category: "NPC Cold"
+
+    - name: "Vampires Feel No Cold"
+      path: "npc.vampires_immune"
+      type: "bool"
+      description: "NPCs with the Vampire keyword (Serana, vampire followers) are never described as cold, never frost over and are never in need of warming. The optional Cold Shiver animations always leave vampires out."
+      defaultValue: true
+      category: "NPC Cold"
+
+    - name: "Undead Feel No Cold"
+      path: "npc.undead_immune"
+      type: "bool"
+      description: "The same for undead NPCs (the ActorTypeUndead keyword: ghosts, liches, undead followers). Some mods also tag vampires as undead, so with this on they are left out even if the vampire switch is off. The optional Cold Shiver animations always leave the undead out."
+      defaultValue: true
+      category: "NPC Cold"
+
+    # --- Scene Warmth ------------------------------------------------------------------------------
+    - name: "Warmth From Intimate Scenes"
+      path: "scene.enabled"
+      type: "bool"
+      description: "While you are in a SexLab or OStim scene (cuddles included), shared body heat warms you a little every 10 seconds through Frostfall's own exposure function. Either framework is optional; nothing happens without them."
+      defaultValue: true
+      category: "Scene Warmth"
+
+    - name: "Warmth Per 10 Seconds"
+      path: "scene.rate"
+      type: "float"
+      description: "Exposure removed every 10 seconds of a scene, on Frostfall's 0-120 scale (each exposure level is 20). 0 = none. For comparison, one Share Body Heat huddle removes 10 once."
+      defaultValue: 0.1
+      min: 0.0
+      max: 3.0
+      category: "Scene Warmth"
+
+    # --- Debug -----------------------------------------------------------------------------------
+    - name: "Log All Changes"
+      path: "debug.log_all"
+      type: "bool"
+      description: "Write every condition start and end to Frostfall_Awareness.log (next to skse64.log)."
+      defaultValue: false
+      category: "Debug"
