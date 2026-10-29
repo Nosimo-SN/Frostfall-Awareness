@@ -18,7 +18,8 @@ It has three parts, installed together by a FOMOD:
 - Skyrim SE / AE (1.5.97 and 1.6.x) with [SKSE](https://skse.silverlock.org/)
 - [Address Library for SKSE Plugins](https://www.nexusmods.com/skyrimspecialedition/mods/32444)
 - Frostfall 3.4 or Frostfall 2026 (`Frostfall.esp`)
-- SkyrimNet Beta 29 or later
+- SkyrimNet Beta 28 or later (Beta 29 keeps an action's target when the NPC adds a thought after it,
+  which helps *Warm Each Other*)
 - For the Cold Shiver animations: [Open Animation Replacer](https://www.nexusmods.com/skyrimspecialedition/mods/92109)
 
 Optional, picked up when present: [Advanced Nudity Detection](https://www.nexusmods.com/skyrimspecialedition/mods/165289)
