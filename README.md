@@ -65,12 +65,18 @@ leave.
 
 **Rescues.** With Frostfall's *Max Exposure* set to rescue, the companion who saved you gets a first-person
 memory of carrying you in from the cold, you get a hazy one of blacking out, the room sees you brought in, and
-your rescuer is the first to speak when you wake.
+your rescuer is the first to speak when you wake. Recruited creatures and animals who carried you remember it
+too, each in its own way, unless SkyrimNet's Memory Filter keeps memories to actors it counts as capable of
+speech.
+
+**Copied fires.** DynDOLOD and some mods place copies of vanilla fires (giant camp fires are the usual case)
+under new records that Frostfall doesn't recognise. At startup, every object using the same model as a fire
+Frostfall knows is counted as that fire.
 
 **Scene warmth.** During a SexLab or OStim scene, shared body heat removes a little exposure every ten
 seconds.
 
-**Vampires and the undead** feel no cold by default; each has its own switch. **NPC Cold Shift** makes NPCs
+**Vampires and the undead** (Serana until she is cured) feel no cold and have no body heat to share, by default; each has its own switch. **NPC Cold Shift** makes NPCs
 hardier or quicker to feel the cold by whole steps.
 
 **Cold Shiver** (optional). You shiver from Frostfall's Very Cold on; NPCs outdoors shiver while you are at
@@ -98,7 +104,7 @@ cd Frostfall-Awareness
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
 cmake --build build
-python tools/package.py . 1.0.0
+python tools/package.py . 1.0.1
 ```
 
 Run the CMake commands from a VS 2022 x64 developer prompt. `tools/package.py` writes the FOMOD archive to

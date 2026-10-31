@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 cmake_minimum_required(VERSION 3.21)
-project(Frostfall_Awareness VERSION 1.0.0 LANGUAGES CXX)
+project(Frostfall_Awareness VERSION 1.0.1 LANGUAGES CXX)
 
 # SE + AE (flatrim) only; no hooks, so the trampoline patch-safety fetch is unnecessary.
 set(BUILD_TESTS OFF CACHE BOOL "" FORCE)

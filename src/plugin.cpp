@@ -140,6 +140,7 @@ namespace
 		int                                  coldShift{ 0 };  // NPC cold, in whole steps: -2 hardier .. +2 feel it sooner
 		bool                                 vampiresImmune{ true };
 		bool                                 undeadImmune{ true };
+		bool                                 heatCopies{ true };  // read at startup only
 		bool                                 sceneWarmth{ true };
 		float                                sceneRate{ 0.1f };
 		bool                                 logAll{ false };
@@ -231,6 +232,7 @@ namespace
 			s.coldShift = static_cast<int>(std::lround(ConfigFloat("npc.cold_shift", static_cast<float>(s.coldShift), -2.0f, 2.0f)));
 			s.vampiresImmune = ConfigBool("npc.vampires_immune", s.vampiresImmune);
 			s.undeadImmune = ConfigBool("npc.undead_immune", s.undeadImmune);
+			s.heatCopies = ConfigBool("heat.match_copies", s.heatCopies);
 			s.sceneWarmth = ConfigBool("scene.enabled", s.sceneWarmth);
 			s.sceneRate = ConfigFloat("scene.rate", s.sceneRate, 0.0f, 3.0f);
 			s.logAll = ConfigBool("debug.log_all", s.logAll);
@@ -259,6 +261,10 @@ namespace
 		std::vector<RE::TESFaction*>            andRevealing;              // A.N.D. showing factions, rank 1 = showing
 		RE::TESIdleForm*                        hugIdle{ nullptr };        // vanilla paired hug
 		RE::TESEffectShader*                    warmGlow{ nullptr };       // vanilla resist-fire potion glow
+		std::vector<RE::TESFaction*>            vampireFactions;           // VampireFaction, DLC1VampireFaction
+		RE::TESNPC*                             serana{ nullptr };         // a plain Nord in the records; a vampire until cured
+		RE::TESNPC*                             valerica{ nullptr };       // a plain Nord in the records
+		RE::TESQuest*                           seranaCure{ nullptr };     // DLC1SeranaCureSelfQuest, stage 100 = cured
 		std::array<RE::BGSKeyword*, kStateCount> frostbite{};
 		std::vector<std::pair<std::string, RescueKind>> rescueTexts;  // normalised message text
 	};
@@ -318,6 +324,8 @@ namespace
 		std::string            playerName;
 		bool                   playerFemale{ false };
 		std::vector<Companion> rescuers;
+		bool                   memorySpeechOnly{ false };  // SkyrimNet: memories only for actors capable of speech
+		bool                   actorSpeechOnly{ false };   // SkyrimNet: only actors capable of speech take part
 		Settings               settings;
 	};
 
@@ -453,6 +461,18 @@ namespace
 			}
 		}
 		return name;
+	}
+
+	// SkyrimNet's "only actors capable of speech" switches aren't in its API; read them from its config files.
+	bool SkyrimNetSwitch(const char* a_file, std::string_view a_key)
+	{
+		std::ifstream in(std::string("Data/SKSE/Plugins/SkyrimNet/config/") + a_file);
+		for (std::string line; std::getline(in, line);) {
+			if (line.starts_with(a_key) && line.size() > a_key.size() && line[a_key.size()] == ':') {
+				return line.find("true", a_key.size()) != std::string::npos;
+			}
+		}
+		return false;
 	}
 
 	std::string LocationName(RE::PlayerCharacter* a_player)
@@ -747,14 +767,23 @@ namespace
 		job.playerName = playerName && *playerName ? playerName : "the traveller";
 		const auto base = a_player->GetActorBase();
 		job.playerFemale = base && base->GetSex() == RE::SEX::kFemale;
-		for (const auto& c : present) {
-			if ((a_kind == RescueKind::kCompanion && !c.creature) || (a_kind == RescueKind::kAnimal && c.creature)) {
-				job.rescuers.push_back(c);
+		// A companion rescue is everyone who came along, recruited creatures included; an animal rescue is the
+		// creatures alone (Frostfall chose it because no follower was there). People are listed first.
+		for (const bool creature : { false, true }) {
+			for (const auto& c : present) {
+				if (c.creature == creature && (a_kind == RescueKind::kCompanion || (a_kind == RescueKind::kAnimal && creature))) {
+					job.rescuers.push_back(c);
+				}
 			}
 		}
+		job.memorySpeechOnly = SkyrimNetSwitch("MemoryFilter.yaml", "AllowOnlyActorsCapableOfSpeech");
+		job.actorSpeechOnly = SkyrimNetSwitch("ActorFilter.yaml", "AllowOnlyActorsCapableOfSpeech");
 		job.settings = a_settings;
-		logs::info("Frostfall rescue confirmed ({}): {} -> {}, {} rescuer(s)", RescueKindName(a_kind), job.fallLocation,
-			job.arrivalLocation, job.rescuers.size());
+		logs::info("Frostfall rescue confirmed ({}): {} -> {}, {} rescuer(s){}", RescueKindName(a_kind), job.fallLocation,
+			job.arrivalLocation, job.rescuers.size(),
+			job.memorySpeechOnly || job.actorSpeechOnly ? " (SkyrimNet: speech-capable actors only for"s + (job.memorySpeechOnly ? " memories"s : ""s) +
+			                                                  (job.actorSpeechOnly ? " dialogue"s : ""s) + ")" :
+			                                              ""s);
 
 		// The room sees the player brought in. Not when the rescue stayed where the player fell (a companion's
 		// campfire), and only for a companion or an animal, whose name is known.
@@ -988,6 +1017,8 @@ namespace
 	}
 
 	// "" = eligible, else the reason it is not.
+	const char* ColdImmunity(RE::Actor* a_actor, const Settings& a_settings);  // defined with the NPC cold estimate
+
 	std::string HuddleBlocker(RE::Actor* a_actor)
 	{
 		if (!a_actor) {
@@ -996,8 +1027,13 @@ namespace
 		if (!g_inGame) {
 			return "not in game";
 		}
-		if (!SnapshotSettings().huddleEnabled) {
+		const auto settings = SnapshotSettings();
+		if (!settings.huddleEnabled) {
 			return "action switched off";
+		}
+		// A vampire or undead who feels no cold has no body heat to share either.
+		if (const auto immune = ColdImmunity(a_actor, settings)) {
+			return fmt::format("{}, no body heat to share", immune);
 		}
 		if (g_huddleLevel < 2) {
 			return fmt::format("player not cold enough (exposure level {})", g_huddleLevel.load());
@@ -1135,14 +1171,57 @@ namespace
 	}
 
 	// The Cold Shiver OAR conditions, NPC branch.
+	std::atomic_bool g_seranaCured{ false };  // from the game thread's poll; the decorator reads it elsewhere
+
+	bool IsVampire(RE::Actor* a_actor, const std::function<bool(std::string_view)>& a_hasKeyword)
+	{
+		if (a_hasKeyword("Vampire")) {
+			return true;
+		}
+		// Serana and Valerica are plain Nords in the records (Dawnguard tracks Serana's cure in a quest), and
+		// follower mods often leave the keyword off but keep the vampire factions.
+		const auto base = a_actor->GetActorBase();
+		if (base && ((base == g_forms.serana && !g_seranaCured) || base == g_forms.valerica)) {
+			return true;
+		}
+		return std::ranges::any_of(g_forms.vampireFactions, [&](RE::TESFaction* a_faction) { return a_actor->IsInFaction(a_faction); });
+	}
+
+	class SeranaCuredResult final : public RE::BSScript::IStackCallbackFunctor
+	{
+	public:
+		void operator()(RE::BSScript::Variable a_result) override { g_seranaCured = a_result.IsBool() && a_result.GetBool(); }
+		void SetObject(const RE::BSTSmartPointer<RE::BSScript::Object>&) override {}
+	};
+
+	// DLC1SeranaCureSelfQuest stage 100 = cured. CommonLib has no stage-done check, so ask Papyrus, every 10 s.
+	void QuerySeranaCured()
+	{
+		static Clock::time_point last{};
+		const auto now = Clock::now();
+		const auto vm = RE::BSScript::Internal::VirtualMachine::GetSingleton();
+		if (!g_forms.seranaCure || !vm || now - last < 10s) {
+			return;
+		}
+		last = now;
+		const auto policy = vm->GetObjectHandlePolicy();
+		const auto handle = policy ? policy->GetHandleForObject(RE::TESQuest::FORMTYPE, g_forms.seranaCure) : 0;
+		if (!handle) {
+			return;
+		}
+		RE::BSTSmartPointer<RE::BSScript::IStackCallbackFunctor> result{ new SeranaCuredResult() };
+		std::unique_ptr<RE::BSScript::IFunctionArguments>          args{ RE::MakeFunctionArguments(static_cast<std::int32_t>(100)) };
+		vm->DispatchMethodCall(handle, "Quest", "IsStageDone", args.get(), result);
+	}
+
 	// Vampires and the undead don't feel the cold (each switchable). The keyword is usually on the race.
 	const char* ColdImmunity(RE::Actor* a_actor, const Settings& a_settings)
 	{
 		const auto race = a_actor->GetRace();
-		const auto has = [&](std::string_view a_keyword) {
+		const std::function<bool(std::string_view)> has = [&](std::string_view a_keyword) {
 			return a_actor->HasKeywordString(a_keyword) || (race && race->HasKeywordString(a_keyword));
 		};
-		if (a_settings.vampiresImmune && has("Vampire")) {
+		if (a_settings.vampiresImmune && IsVampire(a_actor, has)) {
 			return "vampire";
 		}
 		if (a_settings.undeadImmune && has("ActorTypeUndead")) {
@@ -1471,8 +1550,12 @@ namespace
 		if (!g_inGame) {
 			return "not in game";
 		}
-		if (!SnapshotSettings().warmOthers) {
+		const auto settings = SnapshotSettings();
+		if (!settings.warmOthers) {
 			return "action switched off";
+		}
+		if (const auto immune = ColdImmunity(a_actor, settings)) {
+			return fmt::format("{}, no body heat to share", immune);
 		}
 		if (g_huddleLevel < 2) {
 			return fmt::format("not cold enough out (player exposure level {})", g_huddleLevel.load());
@@ -1572,6 +1655,8 @@ namespace
 		SKSE::GetTaskInterface()->AddTask([actor, target, targetName] { PlayWarmEachOther(actor, target, targetName); });
 	}
 
+	void LogHeatSource(RE::PlayerCharacter* a_player);  // defined with the heat-source lists below
+
 	// --- poll ------------------------------------------------------------------------------------------
 
 	void Poll()
@@ -1601,7 +1686,11 @@ namespace
 		UpdateNarration(player, settings);
 		UpdateHuddleCandidates(player);
 		UpdateSceneWarmth(player, settings);
+		QuerySeranaCured();
 		UpdateNpcFrost(settings);
+		if (settings.logAll) {
+			LogHeatSource(player);
+		}
 		g_primed = true;
 	}
 
@@ -1782,9 +1871,21 @@ namespace
 				logs::warn("SkyrimNet did not store the rescue event");
 			}
 		}
-		// The player waking is narrated with the first person-rescuer as originator, so they get the turn to
-		// speak, with the memory of the rescue already theirs.
-		const auto rescuer = std::ranges::find_if(a_job.rescuers, [](const Companion& c) { return !c.creature; });
+		// The player waking is narrated with the first rescuer who may speak as originator, so they get the turn to
+		// speak, with the memory of the rescue already theirs. People come first; a creature only when it wrote a
+		// memory (SkyrimNet let it) and SkyrimNet doesn't limit dialogue to actors capable of speech.
+		std::unordered_set<RE::FormID> remembered;
+		if (const auto it = reply->find("rescuers"); it != reply->end() && it->is_array()) {
+			for (const auto& entry : *it) {
+				const auto name = entry.value("name", ""s);
+				if (const auto c = std::ranges::find_if(a_job.rescuers, [&](const Companion& r) { return r.name == name; }); c != a_job.rescuers.end()) {
+					remembered.insert(c->formID);
+				}
+			}
+		}
+		const auto rescuer = std::ranges::find_if(a_job.rescuers, [&](const Companion& c) {
+			return !c.creature || (!a_job.actorSpeechOnly && remembered.contains(c.formID));
+		});
 		if (a_job.settings.wakeLine && PublicRegisterEvent && rescuer != a_job.rescuers.end()) {
 			const std::string their = a_job.playerFemale ? "her" : "his";
 			const std::string them = a_job.playerFemale ? "her" : "him";
@@ -1821,6 +1922,7 @@ namespace
 			ctx["inWater"] = job.inWater;
 			ctx["hoursPassed"] = 2;
 			ctx["playerMemory"] = job.settings.playerMemory;
+			ctx["memorySpeechOnly"] = job.memorySpeechOnly;
 			ctx["rescuers"] = nlohmann::json::array();
 			for (const auto& r : job.rescuers) {
 				ctx["rescuers"].push_back({ { "name", r.name }, { "race", r.race }, { "formId", r.formID }, { "creature", r.creature } });
@@ -1903,6 +2005,17 @@ namespace
 				}
 			}
 		}
+		if (const auto faction = dataHandler->LookupForm<RE::TESFaction>(0x027242, "Skyrim.esm")) {
+			g_forms.vampireFactions.push_back(faction);
+		}
+		if (dataHandler->LookupModByName("Dawnguard.esm")) {
+			if (const auto faction = dataHandler->LookupForm<RE::TESFaction>(0x003376, "Dawnguard.esm")) {
+				g_forms.vampireFactions.push_back(faction);
+			}
+			g_forms.serana = dataHandler->LookupForm<RE::TESNPC>(0x002B6C, "Dawnguard.esm");
+			g_forms.valerica = dataHandler->LookupForm<RE::TESNPC>(0x003B8B, "Dawnguard.esm");
+			g_forms.seranaCure = dataHandler->LookupForm<RE::TESQuest>(0x005044, "Dawnguard.esm");
+		}
 		logs::info("Visuals: frost shaders {}/{}, A.N.D. factions {}, hug idle {}, warm glow {}", g_forms.frostShaderLower != nullptr,
 			g_forms.frostShader != nullptr, g_forms.andRevealing.size(), g_forms.hugIdle != nullptr, g_forms.warmGlow != nullptr);
 		// Scene warmth sources, both optional.
@@ -1939,6 +2052,140 @@ namespace
 			logs::warn("Frostfall's rescue messages were not found: rescues are confirmed by Frostfall's time skip and exposure reset only");
 		}
 		g_dataReady = g_forms.running && g_forms.exposureLevel;
+	}
+
+	// Frostfall finds fires by base record (Campfire's _Camp_HeatSources lists). DynDOLOD's large-reference
+	// workaround and some mods place copies of vanilla fires under new records with the same model, which it then
+	// ignores (giant camps are the usual case). At startup, every object sharing a listed fire's model joins the
+	// same lists. Only the lists' loaded entries change, nothing is saved, and DynDOLOD's new numbers after a
+	// regeneration are picked up on the next start.
+	RE::BGSListForm*               g_heatAll{ nullptr };
+	std::array<RE::BGSListForm*, 5> g_heatLists{};  // fire, small, medium, large, other
+	RE::TESGlobal*                  g_nearFire{ nullptr };
+
+	std::string HeatListNames(RE::TESForm* a_form)
+	{
+		static constexpr std::array names{ "fire", "small", "medium", "large", "other" };
+		std::string out;
+		for (std::size_t i = 0; i < g_heatLists.size(); ++i) {
+			if (g_heatLists[i] && g_heatLists[i]->HasForm(a_form)) {
+				out += out.empty() ? names[i] : ", "s + names[i];
+			}
+		}
+		return out.empty() ? "no size list" : out;
+	}
+
+	std::string ModelPath(RE::TESForm* a_form)
+	{
+		const auto model = a_form ? a_form->As<RE::TESModel>() : nullptr;
+		const auto path = model ? model->GetModel() : nullptr;
+		return path ? path : "";
+	}
+
+	// Debug (Log All Changes): the heat source Frostfall's own search would pick (closest base in
+	// _Camp_HeatSources_All within 600 units), logged whenever it changes, with Frostfall's near-fire flag.
+	void LogHeatSource(RE::PlayerCharacter* a_player)
+	{
+		static Clock::time_point last{};
+		static RE::FormID        lastRef = 0;
+		static int               lastFlag = -1;
+		const auto               now = Clock::now();
+		const auto               tes = RE::TES::GetSingleton();
+		if (!g_heatAll || !tes || now - last < 5s) {
+			return;
+		}
+		last = now;
+		RE::TESObjectREFR* closest = nullptr;
+		float              best = 0.0f;
+		tes->ForEachReferenceInRange(a_player, 600.0f, [&](RE::TESObjectREFR* a_ref) {
+			const auto base = a_ref ? a_ref->GetBaseObject() : nullptr;
+			if (base && g_heatAll->HasForm(base) && !a_ref->IsDisabled()) {
+				const float d = a_ref->GetDistance(a_player);
+				if (!closest || d < best) {
+					closest = a_ref;
+					best = d;
+				}
+			}
+			return RE::BSContainer::ForEachResult::kContinue;
+		});
+		const int        flag = static_cast<int>(GlobalValue(g_nearFire, 0.0f));
+		const RE::FormID id = closest ? closest->GetFormID() : 0;
+		if (id == lastRef && flag == lastFlag) {
+			return;
+		}
+		lastRef = id;
+		lastFlag = flag;
+		if (!closest) {
+			logs::info("Heat source: none within 600 units (near-fire flag {})", flag);
+			return;
+		}
+		const auto base = closest->GetBaseObject();
+		logs::info("Heat source: ref {:08X}, base {:08X} '{}' ({}), {:.0f} units; lists: {}; near-fire flag {}", id, base->GetFormID(),
+			ModelPath(base), RE::FormTypeToString(base->GetFormType()), best, HeatListNames(base), flag);
+	}
+
+	void AddHeatSourceCopies()
+	{
+		const auto dataHandler = RE::TESDataHandler::GetSingleton();
+		if (!dataHandler || !dataHandler->LookupModByName("Campfire.esm")) {
+			return;
+		}
+		const auto list = [&](RE::FormID a_id) { return dataHandler->LookupForm<RE::BGSListForm>(a_id, "Campfire.esm"); };
+		const auto all = list(0x028F06);
+		const std::array sized{ list(0x02899F), list(0x028F02), list(0x028F03), list(0x028F04), list(0x028F05) };  // fire, small, medium, large, other
+		g_heatAll = all;
+		g_heatLists = sized;
+		g_nearFire = dataHandler->LookupForm<RE::TESGlobal>(0x064AFD, kFrostfallPlugin);
+		if (!all) {
+			return;
+		}
+		const auto modelOf = [](RE::TESForm* a_form) -> std::string {
+			const auto model = a_form ? a_form->As<RE::TESModel>() : nullptr;
+			const auto path = model ? model->GetModel() : nullptr;
+			if (!path || !*path) {
+				return {};
+			}
+			std::string key = path;
+			std::ranges::transform(key, key.begin(), [](unsigned char c) { return static_cast<char>(c == '/' ? '\\' : std::tolower(c)); });
+			if (key.starts_with("meshes\\")) {
+				key.erase(0, 7);
+			}
+			return key;
+		};
+		// model -> the size lists its known fires are in
+		std::unordered_map<std::string, std::unordered_set<RE::BGSListForm*>> known;
+		for (const auto form : all->forms) {
+			if (auto key = modelOf(form); !key.empty()) {
+				auto& lists = known[key];
+				for (const auto l : sized) {
+					if (l && l->HasForm(form)) {
+						lists.insert(l);
+					}
+				}
+			}
+		}
+		int added = 0;
+		for (const auto type : { RE::FormType::Static, RE::FormType::MovableStatic, RE::FormType::Activator, RE::FormType::Light, RE::FormType::Furniture }) {
+			for (const auto form : dataHandler->GetFormArray(type)) {
+				if (!form || all->HasForm(form)) {
+					continue;
+				}
+				// Only real fires: an original in a fire or size list, never a marker (Update.esm's heat-source
+				// override markers share MarkerX.nif with every XMarker in the world).
+				const auto key = modelOf(form);
+				const auto it = known.find(key);
+				if (it == known.end() || it->second.empty() || key.find("marker") != std::string::npos) {
+					continue;
+				}
+				all->forms.push_back(form);
+				for (const auto l : it->second) {
+					l->forms.push_back(form);
+				}
+				++added;
+				logs::info("Heat source copy {:08X} '{}' ({}) -> {}", form->GetFormID(), ModelPath(form), RE::FormTypeToString(form->GetFormType()), HeatListNames(form));
+			}
+		}
+		logs::info("Heat sources: {} same-model copies of known fires added to Campfire's lists", added);
 	}
 
 	void ConnectSkyrimNet()
@@ -1989,6 +2236,9 @@ namespace
 			RegisterWarmOtherDecorator();
 			RegisterPromptDecorators();
 			ReloadSettings();
+			if (SnapshotSettings().heatCopies) {
+				AddHeatSourceCopies();
+			}
 			if (g_dataReady) {
 				if (const auto ui = RE::UI::GetSingleton()) {
 					ui->AddEventSink<RE::MenuOpenCloseEvent>(MenuSink::GetSingleton());

@@ -26,9 +26,12 @@ How exactly the rescue went is not known: only that {{ playerName }} was carried
 {% if length(rescuers) > 0 %}
 The rescuers:
 {% for r in rescuers %}
-- {{ r.name }}{% if r.race != "" %} ({{ r.race }}){% endif %}{% if r.creature %}, an animal companion{% endif %}
 {% set rUUID = formid_to_uuid(r.formId) %}
-{% if not r.creature and rUUID and rUUID != 0 %}
+{# SkyrimNet's memory filter may keep memories to actors capable of speech; people always are. #}
+{% set rWrites = true %}
+{% if r.creature and memorySpeechOnly %}{% set rWrites = false %}{% if rUUID and rUUID != 0 %}{% if decnpc(rUUID).isCapableOfSpeech %}{% set rWrites = true %}{% endif %}{% endif %}{% endif %}
+- {{ r.name }}{% if r.race != "" %} ({{ r.race }}){% endif %}{% if r.creature %}, a creature companion, not a person{% endif %}{% if not rWrites %} (gets no memory){% endif %}
+{% if rUUID and rUUID != 0 %}
 {% set rSummary = render_character_profile("bio_summary", rUUID) %}
 {% set rPersonality = render_character_profile("bio_personality", rUUID) %}
 {% if rSummary != "" %}  {{ rSummary }}{% endif %}
@@ -36,7 +39,7 @@ The rescuers:
 {% endif %}
 {% endfor %}
 
-Write one memory for each rescuer who is not an animal, from their own perspective: how they rescued {{ playerName }} from the cold, what they did to save {{ playerObject }} and get {{ playerObject }} to safety, and how they felt. For them this is the time they saved {{ playerName }}'s life, and they remember it that way. Several rescuers each remember their own part and may mention the others. Animal companions get no memory, but the others may remember them.
+Write one memory for each rescuer not marked "gets no memory", from their own perspective: how they rescued {{ playerName }} from the cold, what they did to save {{ playerObject }} and get {{ playerObject }} to safety, and how they felt. For them this is the time they saved {{ playerName }}'s life, and they remember it that way. Several rescuers each remember their own part and may mention the others. A creature companion remembers it as that creature would: its own senses, instincts and way of thinking, and the strength or effort its kind would bring to carrying or dragging {{ playerObject }}; a beast's memory is simple and sensory, a giant's or other thinking creature's in its own plain words. Rescuers marked "gets no memory" are still remembered by the others.
 {% else %}
 {{ playerName }} had no companion along. Whoever helped is described only in the account above; write no rescuer memories.
 {% endif %}
@@ -49,6 +52,6 @@ Also write "event": one neutral third-person sentence stating what happened (who
 
 Answer with exactly this JSON shape ("name" is the rescuer's exact name as listed):
 {% raw %}{"rescuers":[{"name":"...","content":"...","emotion":"...","importance_score":0.8,"type":"EXPERIENCE","tags":["..."]}],"player":{"content":"...","emotion":"...","importance_score":0.7,"type":"TRAUMA","tags":["..."]},"event":"..."}{% endraw %}
-{% if length(rescuers) == 0 %}"rescuers" is an empty array.{% endif %}
+{% if length(rescuers) == 0 %}"rescuers" is an empty array.{% else %}Rescuers marked "gets no memory" are left out of "rescuers" (an empty array if that is all of them).{% endif %}
 {% if not playerMemory %}Leave "player" out.{% endif %}
 [ end user ]

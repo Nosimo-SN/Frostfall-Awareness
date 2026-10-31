@@ -96,6 +96,42 @@
                             }
                         },
                         {
+                            "condition": "IsInFaction",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true,
+                            "Faction": {
+                                "pluginName": "Skyrim.esm",
+                                "formID": "27242"
+                            }
+                        },
+                        {
+                            "condition": "IsInFaction",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true,
+                            "Faction": {
+                                "pluginName": "Dawnguard.esm",
+                                "formID": "3376"
+                            }
+                        },
+                        {
+                            "condition": "IsActorBase",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true,
+                            "Actor base": {
+                                "pluginName": "Dawnguard.esm",
+                                "formID": "2B6C"
+                            }
+                        },
+                        {
+                            "condition": "IsActorBase",
+                            "requiredVersion": "1.0.0.0",
+                            "negated": true,
+                            "Actor base": {
+                                "pluginName": "Dawnguard.esm",
+                                "formID": "3B8B"
+                            }
+                        },
+                        {
                             "condition": "IsInInterior",
                             "requiredVersion": "1.0.0.0",
                             "negated": true

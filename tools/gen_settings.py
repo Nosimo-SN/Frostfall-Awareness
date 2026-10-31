@@ -46,7 +46,7 @@ def field(name, path, typ, desc, default, cat, bounds=None):
 
 w("plugin:")
 w('  name: "Frostfall Awareness"')
-w('  version: "1.0.0"')
+w('  version: "1.0.1"')
 w("  description: >-")
 w("    Turns Frostfall's cold into something the people around you notice. While Frostfall applies its")
 w("    exposure or frostbite penalties to you, the Frostfall_Awareness SKSE plugin posts a short narration")
@@ -86,17 +86,17 @@ for key, label, rep, text, desc in states:
           text, "Narration Text")
 w("    # --- Rescue ----------------------------------------------------------------------------------")
 field("Rescue Memories", "rescue.memories", "bool",
-      "When Frostfall rescues you (Max Exposure set to rescue), the companions who saved you get a first-person memory of it. Only Frostfall's own rescue counts: if another mod takes over the collapse, nothing is written. One LLM call per rescue.",
+      "When Frostfall rescues you (Max Exposure set to rescue), the companions who saved you get a first-person memory of it, recruited creatures and animals included, each in its own way. When SkyrimNet keeps memories to actors capable of speech (its Memory Filter setting), creatures it doesn't count as speaking get none. Only Frostfall's own rescue counts: if another mod takes over the collapse, nothing is written. One LLM call per rescue.",
       True, "Rescue")
 field("Your Hazy Memory", "rescue.player_memory", "bool",
       "You also get a memory: a hazy recollection of blacking out and glimpses of your rescuer.", True, "Rescue")
 field("Rescue Event", "rescue.event", "bool",
       "Also log a one-line scene event about the rescue, so people around you know what happened.", True, "Rescue")
 field("The Room Sees You Brought In", "rescue.arrival_line", "bool",
-      "As you come to, the people around you are told your rescuer has carried you in from the cold, so the innkeeper or patrons can react. Your rescuer's own line follows a few seconds later. Only when a companion or animal brought you somewhere new.",
+      "As you come to, the people around you are told your rescuer has carried you in from the cold, so the innkeeper or patrons can react. Your rescuer's own line follows a few seconds later. Only when a companion or creature brought you somewhere new.",
       True, "Rescue")
 field("Rescuer Speaks When You Wake", "rescue.wake_line", "bool",
-      "Once you are back on your feet and the room is quiet, your waking is narrated to your rescuer alone, so they are the one who speaks to you, already remembering the rescue. Only when a companion (not an animal) saved you.",
+      "Once you are back on your feet and the room is quiet, your waking is narrated to your rescuer alone, so they are the one who speaks to you, already remembering the rescue. A person rescuer speaks first; a creature only when it got a memory and SkyrimNet lets actors not capable of speech take part (its Actor Filter setting).",
       True, "Rescue")
 field("Quiet After Rescue (seconds)", "rescue.quiet", "int",
       "After a rescue, no cold narration for this long, so waking up isn't crowded. Conditions you already had on the mountain (and the frostbite Frostfall rolls as you wake) are not announced again; their repeats count from the rescue.",
@@ -126,11 +126,15 @@ field("NPC Cold Shift", "npc.cold_shift", "int",
       "How readily NPCs feel the cold, in whole steps of air temperature: -2 = much hardier, 0 = default, +2 = they feel it much sooner. Applies to how NPCs are described to the AI, their frost look and who can be warmed; the optional Cold Shiver animations keep the default.",
       0, "NPC Cold", (-2, 2))
 field("Vampires Feel No Cold", "npc.vampires_immune", "bool",
-      "NPCs with the Vampire keyword (Serana, vampire followers) are never described as cold, never frost over and are never in need of warming. The optional Cold Shiver animations always leave vampires out.",
+      "Vampire NPCs (Serana until she is cured, Valerica, anyone with the Vampire keyword or in a vampire faction, vampire followers) are never described as cold, never frost over and are never in need of warming, and with no body heat of their own they never offer to share it (Share Body Heat, Warm Each Other). The optional Cold Shiver animations always leave vampires out.",
       True, "NPC Cold")
 field("Undead Feel No Cold", "npc.undead_immune", "bool",
-      "The same for undead NPCs (the ActorTypeUndead keyword: ghosts, liches, undead followers). Some mods also tag vampires as undead, so with this on they are left out even if the vampire switch is off. The optional Cold Shiver animations always leave the undead out.",
+      "Undead NPCs (ghosts, liches, undead followers) are never described as cold, never frost over, are never in need of warming and never offer their body heat. Some mods also mark vampires as undead; this switch covers those vampires too, even if Vampires Feel No Cold is off. The optional Cold Shiver animations always leave the undead out.",
       True, "NPC Cold")
+w("    # --- Heat Sources ------------------------------------------------------------------------------")
+field("Recognise Copied Fires", "heat.match_copies", "bool",
+      "Frostfall only recognises fires by their exact record. DynDOLOD and some mods place copies of vanilla fires under new records (giant camp fires are the usual case), and Frostfall then ignores them. On: at startup, every object that uses the same model as a fire Frostfall knows is counted as that fire. Takes effect the next time you start the game.",
+      True, "Heat Sources")
 w("    # --- Scene Warmth ------------------------------------------------------------------------------")
 field("Warmth From Intimate Scenes", "scene.enabled", "bool",
       "While you are in a SexLab or OStim scene (cuddles included), shared body heat warms you a little every 10 seconds through Frostfall's own exposure function. Either framework is optional; nothing happens without them.",

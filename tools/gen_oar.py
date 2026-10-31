@@ -99,6 +99,11 @@ npc_branch = multi("AND",
     # Vampires and the undead feel no cold (the DLL and prompt make this switchable; OAR can't read settings).
     cond("HasKeyword", negated=True, Keyword={"form": form("Skyrim.esm", "A82BB")}),   # Vampire
     cond("HasKeyword", negated=True, Keyword={"form": form("Skyrim.esm", "13796")}),   # ActorTypeUndead
+    # Vampires without the keyword: the vampire factions, and Serana and Valerica (plain Nords in the records).
+    cond("IsInFaction", negated=True, Faction=form("Skyrim.esm", "27242")),             # VampireFaction
+    cond("IsInFaction", negated=True, Faction=form("Dawnguard.esm", "3376")),           # DLC1VampireFaction
+    cond("IsActorBase", negated=True, **{"Actor base": form("Dawnguard.esm", "2B6C")}),  # Serana
+    cond("IsActorBase", negated=True, **{"Actor base": form("Dawnguard.esm", "3B8B")}),  # Valerica
     cond("IsInInterior", negated=True),
     exposure_level(">=", 2),
     multi("OR",

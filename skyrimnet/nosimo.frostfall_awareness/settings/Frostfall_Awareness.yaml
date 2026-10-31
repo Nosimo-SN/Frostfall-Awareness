@@ -1,6 +1,6 @@
 plugin:
   name: "Frostfall Awareness"
-  version: "1.0.0"
+  version: "1.0.1"
   description: >-
     Turns Frostfall's cold into something the people around you notice. While Frostfall applies its
     exposure or frostbite penalties to you, the Frostfall_Awareness SKSE plugin posts a short narration
@@ -251,7 +251,7 @@ schema:
     - name: "Rescue Memories"
       path: "rescue.memories"
       type: "bool"
-      description: "When Frostfall rescues you (Max Exposure set to rescue), the companions who saved you get a first-person memory of it. Only Frostfall's own rescue counts: if another mod takes over the collapse, nothing is written. One LLM call per rescue."
+      description: "When Frostfall rescues you (Max Exposure set to rescue), the companions who saved you get a first-person memory of it, recruited creatures and animals included, each in its own way. When SkyrimNet keeps memories to actors capable of speech (its Memory Filter setting), creatures it doesn't count as speaking get none. Only Frostfall's own rescue counts: if another mod takes over the collapse, nothing is written. One LLM call per rescue."
       defaultValue: true
       category: "Rescue"
 
@@ -272,14 +272,14 @@ schema:
     - name: "The Room Sees You Brought In"
       path: "rescue.arrival_line"
       type: "bool"
-      description: "As you come to, the people around you are told your rescuer has carried you in from the cold, so the innkeeper or patrons can react. Your rescuer's own line follows a few seconds later. Only when a companion or animal brought you somewhere new."
+      description: "As you come to, the people around you are told your rescuer has carried you in from the cold, so the innkeeper or patrons can react. Your rescuer's own line follows a few seconds later. Only when a companion or creature brought you somewhere new."
       defaultValue: true
       category: "Rescue"
 
     - name: "Rescuer Speaks When You Wake"
       path: "rescue.wake_line"
       type: "bool"
-      description: "Once you are back on your feet and the room is quiet, your waking is narrated to your rescuer alone, so they are the one who speaks to you, already remembering the rescue. Only when a companion (not an animal) saved you."
+      description: "Once you are back on your feet and the room is quiet, your waking is narrated to your rescuer alone, so they are the one who speaks to you, already remembering the rescue. A person rescuer speaks first; a creature only when it got a memory and SkyrimNet lets actors not capable of speech take part (its Actor Filter setting)."
       defaultValue: true
       category: "Rescue"
 
@@ -349,16 +349,24 @@ schema:
     - name: "Vampires Feel No Cold"
       path: "npc.vampires_immune"
       type: "bool"
-      description: "NPCs with the Vampire keyword (Serana, vampire followers) are never described as cold, never frost over and are never in need of warming. The optional Cold Shiver animations always leave vampires out."
+      description: "Vampire NPCs (Serana until she is cured, Valerica, anyone with the Vampire keyword or in a vampire faction, vampire followers) are never described as cold, never frost over and are never in need of warming, and with no body heat of their own they never offer to share it (Share Body Heat, Warm Each Other). The optional Cold Shiver animations always leave vampires out."
       defaultValue: true
       category: "NPC Cold"
 
     - name: "Undead Feel No Cold"
       path: "npc.undead_immune"
       type: "bool"
-      description: "The same for undead NPCs (the ActorTypeUndead keyword: ghosts, liches, undead followers). Some mods also tag vampires as undead, so with this on they are left out even if the vampire switch is off. The optional Cold Shiver animations always leave the undead out."
+      description: "Undead NPCs (ghosts, liches, undead followers) are never described as cold, never frost over, are never in need of warming and never offer their body heat. Some mods also mark vampires as undead; this switch covers those vampires too, even if Vampires Feel No Cold is off. The optional Cold Shiver animations always leave the undead out."
       defaultValue: true
       category: "NPC Cold"
+
+    # --- Heat Sources ------------------------------------------------------------------------------
+    - name: "Recognise Copied Fires"
+      path: "heat.match_copies"
+      type: "bool"
+      description: "Frostfall only recognises fires by their exact record. DynDOLOD and some mods place copies of vanilla fires under new records (giant camp fires are the usual case), and Frostfall then ignores them. On: at startup, every object that uses the same model as a fire Frostfall knows is counted as that fire. Takes effect the next time you start the game."
+      defaultValue: true
+      category: "Heat Sources"
 
     # --- Scene Warmth ------------------------------------------------------------------------------
     - name: "Warmth From Intimate Scenes"
