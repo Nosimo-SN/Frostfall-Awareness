@@ -8,3 +8,5 @@ build-log*.txt
 *.user
 Thumbs.db
 __pycache__/
+stage/
+backups/

@@ -1,6 +1,6 @@
 plugin:
   name: "Frostfall Awareness"
-  version: "1.0.1"
+  version: "1.0.2"
   description: >-
     Turns Frostfall's cold into something the people around you notice. While Frostfall applies its
     exposure or frostbite penalties to you, the Frostfall_Awareness SKSE plugin posts a short narration

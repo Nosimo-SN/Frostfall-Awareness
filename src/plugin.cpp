@@ -1964,8 +1964,45 @@ namespace
 
 	// --- lifecycle -------------------------------------------------------------------------------------
 
-	// Globals and keywords keep their EditorIDs in the game, so the lookup works for both the regular and the
-	// ESL build of Frostfall 2026; the FormIDs are the regular build's fallback.
+	// Frostfall's FormIDs in its regular builds (original, Frostfall 2026 .esp) and in the ESL-compacted Frostfall 2026
+	// build, which renumbers every record into 0x800+. Read from both files with houseCARL (2026-11-12).
+	constexpr std::array<std::pair<RE::FormID, RE::FormID>, 21> kFrostfallCompacted{ {
+		{ 0x06DCFB, 0x000A9A },  // FrostfallRunning
+		{ 0x068115, 0x000A49 },  // _Frost_Setting_MaxExposureMode
+		{ 0x064AFD, 0x000A0D },  // _Frost_NearFire
+		{ 0x069156, 0x000A61 },  // _Frost_FrostbiteHeadKW
+		{ 0x069153, 0x000A5E },  // _Frost_FrostbiteBodyKW
+		{ 0x069154, 0x000A5F },  // _Frost_FrostbiteHandsKW
+		{ 0x069155, 0x000A60 },  // _Frost_FrostbiteFeetKW
+		{ 0x062FF0, 0x0009EF },  // _Frost_RescueMsg_A_1
+		{ 0x062FF1, 0x0009F0 },  // _Frost_RescueMsg_A_2
+		{ 0x062FF2, 0x0009F1 },  // _Frost_RescueMsg_F_1
+		{ 0x062FF3, 0x0009F2 },  // _Frost_RescueMsg_F_2
+		{ 0x062FF4, 0x0009F3 },  // _Frost_RescueMsg_F_3
+		{ 0x062FF5, 0x0009F4 },  // _Frost_RescueMsg_F_4
+		{ 0x062FF6, 0x0009F5 },  // _Frost_RescueMsg_F_5
+		{ 0x062FF7, 0x0009F6 },  // _Frost_RescueMsg_D_1
+		{ 0x062FF8, 0x0009F7 },  // _Frost_RescueMsg_D_2
+		{ 0x062FF9, 0x0009F8 },  // _Frost_RescueMsg_D_3
+		{ 0x062FFA, 0x0009F9 },  // _Frost_RescueMsg_D_4
+		{ 0x062FFC, 0x0009FB },  // _Frost_RescueMsg_Failsafe
+		{ 0x006EC7, 0x00081D },  // _Frost_FrostFXShader
+		{ 0x006EC8, 0x00081E },  // _Frost_FrostFXShader_Lower
+	} };
+
+	// Campfire 2026 ships an ESL-compacted Campfire.esm the same way. Read with houseCARL (2026-11-13).
+	constexpr auto kCampfirePlugin = "Campfire.esm"sv;
+	constexpr std::array<std::pair<RE::FormID, RE::FormID>, 6> kCampfireCompacted{ {
+		{ 0x028F06, 0x000875 },  // _Camp_HeatSources_All
+		{ 0x02899F, 0x000870 },  // _Camp_HeatSources_Fire
+		{ 0x028F02, 0x000871 },  // _Camp_HeatSources_Fire_Small
+		{ 0x028F03, 0x000872 },  // _Camp_HeatSources_Fire_Medium
+		{ 0x028F04, 0x000873 },  // _Camp_HeatSources_Fire_Large
+		{ 0x028F05, 0x000874 },  // _Camp_HeatSources_Other
+	} };
+
+	// Any Frostfall edition: the EditorID first (globals and keywords keep theirs in the game; other types only
+	// with po3 Tweaks), then the regular builds' FormID, then the ESL build's. Update.esm forms keep one FormID.
 	template <class T>
 	T* Resolve(const char* a_editorID, RE::FormID a_localID, std::string_view a_plugin)
 	{
@@ -1973,11 +2010,31 @@ namespace
 			return form;
 		}
 		const auto dataHandler = RE::TESDataHandler::GetSingleton();
-		auto       form = dataHandler && a_localID ? dataHandler->LookupForm<T>(a_localID, a_plugin) : nullptr;
-		if (!form) {
-			logs::warn("{} not found", a_editorID);
+		if (!dataHandler || !a_localID) {
+			return nullptr;
 		}
-		return form;
+		if (auto form = dataHandler->LookupForm<T>(a_localID, a_plugin)) {
+			return form;
+		}
+		const auto tryCompacted = [&](const auto& a_table) -> T* {
+			for (const auto& [regular, compacted] : a_table) {
+				if (regular == a_localID) {
+					return dataHandler->LookupForm<T>(compacted, a_plugin);
+				}
+			}
+			return nullptr;
+		};
+		if (a_plugin == kFrostfallPlugin) {
+			if (auto form = tryCompacted(kFrostfallCompacted)) {
+				return form;
+			}
+		} else if (a_plugin == kCampfirePlugin) {
+			if (auto form = tryCompacted(kCampfireCompacted)) {
+				return form;
+			}
+		}
+		logs::warn("{} not found (not in this {} edition)", a_editorID, a_plugin);
+		return nullptr;
 	}
 
 	void ResolveForms()
@@ -1993,9 +2050,9 @@ namespace
 		g_forms.exposure = Resolve<RE::TESGlobal>("FrostfallAttributeExposureReadOnly", 0xCC0E03, kUpdatePlugin);
 		g_forms.maxExposureMode = Resolve<RE::TESGlobal>("_Frost_Setting_MaxExposureMode", 0x068115, kFrostfallPlugin);
 		g_forms.temperature = Resolve<RE::TESGlobal>("FrostfallCurrentTemperatureReadOnly", 0xCC0E07, kUpdatePlugin);
-		// Effect shaders and idles have no EditorIDs in the game, so these go by FormID only.
-		g_forms.frostShader = dataHandler->LookupForm<RE::TESEffectShader>(0x006EC7, kFrostfallPlugin);
-		g_forms.frostShaderLower = dataHandler->LookupForm<RE::TESEffectShader>(0x006EC8, kFrostfallPlugin);
+		// Effect shaders keep no EditorIDs in the game (without po3 Tweaks): Resolve falls through to either edition's FormID.
+		g_forms.frostShader = Resolve<RE::TESEffectShader>("_Frost_FrostFXShader", 0x006EC7, kFrostfallPlugin);
+		g_forms.frostShaderLower = Resolve<RE::TESEffectShader>("_Frost_FrostFXShader_Lower", 0x006EC8, kFrostfallPlugin);
 		g_forms.hugIdle = dataHandler->LookupForm<RE::TESIdleForm>(0x0F4699, "Skyrim.esm");
 		g_forms.warmGlow = dataHandler->LookupForm<RE::TESEffectShader>(0x10BEA9, "Skyrim.esm");
 		if (dataHandler->LookupModByName(kANDPlugin)) {
@@ -2028,13 +2085,10 @@ namespace
 			}
 		}
 
-		// Rescue messages: EditorIDs need po3 Tweaks for messages, so the regular build's FormIDs back them up.
+		// Rescue messages: EditorIDs need po3 Tweaks for messages, so either edition's FormID backs them up (Resolve).
 		// The text comes from the loaded record, so a translated Frostfall still matches its own message box.
 		for (const auto& def : kRescueMessages) {
-			auto message = RE::TESForm::LookupByEditorID<RE::BGSMessage>(def.editorID);
-			if (!message) {
-				message = dataHandler->LookupForm<RE::BGSMessage>(def.localID, kFrostfallPlugin);
-			}
+			const auto message = Resolve<RE::BGSMessage>(def.editorID, def.localID, kFrostfallPlugin);
 			if (!message) {
 				continue;
 			}
@@ -2127,16 +2181,20 @@ namespace
 	void AddHeatSourceCopies()
 	{
 		const auto dataHandler = RE::TESDataHandler::GetSingleton();
-		if (!dataHandler || !dataHandler->LookupModByName("Campfire.esm")) {
+		if (!dataHandler || !dataHandler->LookupModByName(kCampfirePlugin)) {
+			logs::info("Heat sources: {} is not loaded", kCampfirePlugin);
 			return;
 		}
-		const auto list = [&](RE::FormID a_id) { return dataHandler->LookupForm<RE::BGSListForm>(a_id, "Campfire.esm"); };
-		const auto all = list(0x028F06);
-		const std::array sized{ list(0x02899F), list(0x028F02), list(0x028F03), list(0x028F04), list(0x028F05) };  // fire, small, medium, large, other
+		const auto list = [](const char* a_editorID, RE::FormID a_id) { return Resolve<RE::BGSListForm>(a_editorID, a_id, kCampfirePlugin); };
+		const auto all = list("_Camp_HeatSources_All", 0x028F06);
+		const std::array sized{ list("_Camp_HeatSources_Fire", 0x02899F), list("_Camp_HeatSources_Fire_Small", 0x028F02),
+			list("_Camp_HeatSources_Fire_Medium", 0x028F03), list("_Camp_HeatSources_Fire_Large", 0x028F04),
+			list("_Camp_HeatSources_Other", 0x028F05) };  // fire, small, medium, large, other
 		g_heatAll = all;
 		g_heatLists = sized;
-		g_nearFire = dataHandler->LookupForm<RE::TESGlobal>(0x064AFD, kFrostfallPlugin);
+		g_nearFire = Resolve<RE::TESGlobal>("_Frost_NearFire", 0x064AFD, kFrostfallPlugin);
 		if (!all) {
+			logs::info("Heat sources: Campfire's heat source lists not found, copied fires not added");
 			return;
 		}
 		const auto modelOf = [](RE::TESForm* a_form) -> std::string {

@@ -104,7 +104,7 @@ cd Frostfall-Awareness
 cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo \
   -DCMAKE_TOOLCHAIN_FILE=$VCPKG_ROOT/scripts/buildsystems/vcpkg.cmake -DVCPKG_TARGET_TRIPLET=x64-windows-static-md
 cmake --build build
-python tools/package.py . 1.0.1
+python tools/package.py . 1.0.2
 ```
 
 Run the CMake commands from a VS 2022 x64 developer prompt. `tools/package.py` writes the FOMOD archive to

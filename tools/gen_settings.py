@@ -46,7 +46,7 @@ def field(name, path, typ, desc, default, cat, bounds=None):
 
 w("plugin:")
 w('  name: "Frostfall Awareness"')
-w('  version: "1.0.1"')
+w('  version: "1.0.2"')
 w("  description: >-")
 w("    Turns Frostfall's cold into something the people around you notice. While Frostfall applies its")
 w("    exposure or frostbite penalties to you, the Frostfall_Awareness SKSE plugin posts a short narration")

@@ -125,7 +125,9 @@ submod = {
     "priority": PRIORITY,
     "interruptible": True,
     "conditions": [
-        global_cmp("Frostfall.esp", "6DCFB", "==", 2),  # FrostfallRunning: 2 = running
+        # FrostfallRunning: 2 = running. The ESL-compacted Frostfall.esp (2026 edition) renumbers it to A9A; OAR treats
+        # a condition whose form doesn't exist as false, so either edition passes.
+        multi("OR", global_cmp("Frostfall.esp", "6DCFB", "==", 2), global_cmp("Frostfall.esp", "A9A", "==", 2)),
         cond("IsInCombat", negated=True),
         multi("OR", player_branch, npc_branch),
     ],
